@@ -73,19 +73,25 @@ function ClientFile() {
           </div>
         </div>
         <div className="cf-header-sub">
-          {client.members.slice(0, 3).map((m, i) => (
-            <span key={i} className="cf-chip">{m}</span>
-          ))}
-          <span style={{ marginLeft: "auto", display: "inline-flex", gap: 12, alignItems: "center" }}>
+          {(() => {
+            // Drop the redundant "{Name} — individual" chip for solo individuals
+            // — the Individual entity chip already conveys the same thing.
+            const members = client.members || [];
+            const isSoloIndividual = client.entityType === "Individual"
+              && members.length === 1
+              && /individual/i.test(members[0]);
+            if (isSoloIndividual) return null;
+            return members.slice(0, 3).map((m, i) => (
+              <span key={i} className="cf-chip">{m}</span>
+            ));
+          })()}
+          <span style={{ marginLeft: "auto", display: "inline-flex", gap: 8, alignItems: "center" }}>
             <span className="adviser-chip">
               <span className="adviser-avatar">{adviserInitials(client.adviser)}</span>
-              <span>
-                <span className="adviser-name">{client.adviser}</span>
-                <span className="adviser-role"> · Adviser</span>
-              </span>
+              <span className="adviser-name">{client.adviser}</span>
             </span>
-            <span style={{ color: "var(--text-muted)" }}>·</span>
-            <span>{client.lastActivity}</span>
+            <span className="t-muted">·</span>
+            <span className="t-muted">Updated {client.lastActivity}</span>
           </span>
         </div>
       </div>

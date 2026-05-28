@@ -131,16 +131,16 @@ function FieldRow({ fieldKey, field, expanded, onToggle, flashed }) {
         onClick={onToggle}
       >
         <div className="fr-label">
-          <Icon name="chevron-right" size={11} className="caret" />
-          {def.label}
-          {def.aml && <span className="pill" style={{ fontSize: 10, padding: "1px 6px" }}>AML</span>}
+          <Icon name="chevron-right" size={12} className="caret" />
+          <span>{def.label}</span>
+          {def.aml && <span className="fr-aml-tag">AML</span>}
         </div>
         <span className={`fr-status pill ${sk}`}>
           <StatusGlyph status={field.status} />
           {statusLabel(field.status)}
         </span>
         <span className="fr-value">{field.value}</span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{def.source || "—"}</span>
+        <span className="fr-prov-text">{def.source || "—"}</span>
       </div>
       {expanded && (
         <div className="field-detail">
