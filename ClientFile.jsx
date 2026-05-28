@@ -99,7 +99,7 @@ function ClientFile() {
       <div className="cf-body">
         <SummaryCards client={client} />
 
-        {isHero && <OutstandingSection client={client} runEvent={runEvent} dispatch={dispatch} />}
+        <OutstandingSection client={client} runEvent={runEvent} dispatch={dispatch} />
 
         <ClientFileTabs client={client} fieldsFlash={fieldsFlash[client.id] || {}} formsFlash={formsFlash[client.id] || {}} />
       </div>
@@ -392,7 +392,10 @@ function buildOutstandingActions(client) {
     if (reviewIdKeys.length >= 2) {
       push({ id: "id_verify", sev: "attention", title: `${reviewIdKeys.length} extracted identity field${reviewIdKeys.length === 1 ? "" : "s"} pending DVS verification`, why: "AI-extracted values are kept off the form until DVS confirms them.", expects: "DVS verification return" }, reviewIdKeys);
     }
-    if (isStatus("investor.id_expiry", "stale") && !covered.has("investor.id_expiry")) {
+    // Smith pre-chase wording — kept on Smith's path only. Non-Smith
+    // clients fall through to id_renewal_chase below if their stale ID
+    // already has a renewal request in the activity log.
+    if (client.id === "smith" && isStatus("investor.id_expiry", "stale") && !covered.has("investor.id_expiry")) {
       push({ id: "id_exp", sev: "attention", title: "Photo ID expires in 18 days", why: "Within the chase window — a renewal request will be drafted automatically.", expects: "Renewed Photo ID from client" }, ["investor.id_expiry"]);
     }
     if (isStatus("investor.residential_address", "conflict") && !covered.has("investor.residential_address")) {
@@ -427,13 +430,16 @@ function buildOutstandingActions(client) {
       const labels = bankMissing.map(k => FIELD_DEFS[k]?.label || k).join(", ");
       push({ id: "bank_partial", sev: "missing", title: `Bank details incomplete — ${bankMissing.length} field${bankMissing.length === 1 ? "" : "s"} missing`, why: `Outstanding: ${labels}.`, expects: "Bank statement upload" }, bankMissing);
     }
-    if (isStatus("bank.account_no", "review")) {
+    // Smith-only per-field nudges — non-Smith clients get the aggregate
+    // bank_review / risk_ack_chase cards added further down with proper
+    // actions wired to them.
+    if (client.id === "smith" && isStatus("bank.account_no", "review")) {
       push({ id: "bank_acct", sev: "attention", title: "Extracted account number pending review", why: "Low-confidence OCR match.", expects: "Operator verification" }, ["bank.account_no"]);
     }
   }
 
-  // ---- Risk ack ----
-  if (isStatus("investment.risk_ack", "missing")) {
+  // ---- Risk ack (Smith only — non-Smith uses risk_ack_chase below) ----
+  if (client.id === "smith" && isStatus("investment.risk_ack", "missing")) {
     push({ id: "risk", sev: "attention", title: "Risk acknowledgement not signed", why: "Client signature required before lodgement.", expects: "Client signature" }, ["investment.risk_ack"]);
   }
 
@@ -451,16 +457,71 @@ function buildOutstandingActions(client) {
   }
 
   // ---- Wholesale Certificate unique fields ----
+  // Status-aware: if the cert is on file but expired (failed), the story
+  // is "renew it"; if it's missing/review, the story is "get one filed".
   const wholesaleKeys = ["wholesale.accountant_name","wholesale.cert_expiry"];
   const wholesaleMissing = wholesaleKeys.filter(k => isAnyOf(k, "missing","review","conflict","failed"));
   if (wholesaleMissing.length > 0) {
+    if (isStatus("wholesale.cert_expiry", "failed")) {
+      push({
+        id: "wholesale_expired",
+        sev: "missing",
+        title: "Wholesale certificate expired",
+        why: f["wholesale.cert_expiry"]?.error || "Sophisticated-investor status must be evidenced by an unexpired accountant's certificate (24-month validity).",
+        expects: "Renewed certificate from client (via their accountant)",
+        action: { label: "Send renewal request", run: "auto_chase_okafor" },
+      }, wholesaleMissing);
+    } else {
+      push({
+        id: "wholesale",
+        sev: "missing",
+        title: "Wholesale certificate not on file",
+        why: "Sophisticated-investor status must be evidenced by an accountant's certificate (24-month validity).",
+        expects: "Wholesale certificate upload",
+      }, wholesaleMissing);
+    }
+  }
+
+  // ---- Stale Photo ID with renewal already in flight ----
+  // Brennan's seed has the renewal chase already sent yesterday.
+  if (isStatus("investor.id_expiry", "stale") && !covered.has("investor.id_expiry")) {
+    const renewalSent = (client.activity || []).some(a => /renewal request emailed/i.test(a.desc || ""));
+    if (renewalSent) {
+      push({
+        id: "id_renewal_chase",
+        sev: "attention",
+        title: "Photo ID renewal request sent · awaiting reply",
+        why: `Expires ${f["investor.id_expiry"]?.value || "soon"}. First chase went out yesterday with no reply yet; auto follow-up is scheduled for 30/05/2026.`,
+        expects: "Client reply with renewed Photo ID",
+        action: { label: "Send follow-up now", run: "send_brennan_followup" },
+      }, ["investor.id_expiry"]);
+    }
+  }
+
+  // ---- Bank statement extraction in review (low confidence) ----
+  // Nguyen's seed has 4 bank.* fields in review.
+  const bankReviewKeys = bankKeys.filter(k => isStatus(k, "review"));
+  if (bankReviewKeys.length > 0 && !bankReviewKeys.some(k => covered.has(k))) {
     push({
-      id: "wholesale",
-      sev: "missing",
-      title: "Wholesale certificate not on file",
-      why: "Sophisticated-investor status must be evidenced by an accountant's certificate (24-month validity).",
-      expects: "Wholesale certificate upload",
-    }, wholesaleMissing);
+      id: "bank_review",
+      sev: "attention",
+      title: `Bank statement extraction · ${bankReviewKeys.length} field${bankReviewKeys.length === 1 ? "" : "s"} awaiting verification`,
+      why: "OCR confidence on the extracted bank details is below the 80% auto-verify threshold. Confirm or correct each field.",
+      expects: "Operator verification",
+      action: { label: "Review bank fields", run: { type: "OPEN_RESOLVE", clientId: client.id } },
+    }, bankReviewKeys);
+  }
+
+  // ---- Risk acknowledgement not signed (non-Smith path; Smith handles in slideover) ----
+  if (isStatus("investment.risk_ack", "missing") && client.id !== "smith" && !covered.has("investment.risk_ack")) {
+    push({
+      id: "risk_ack_chase",
+      sev: "attention",
+      title: "Risk acknowledgement not signed",
+      why: "Client signature required before lodgement. Risk-ack form has not been sent yet.",
+      expects: "Signed risk-acknowledgement from client",
+      action: { label: "Email risk-ack form", run: "send_nguyen_risk_ack" },
+    }, ["investment.risk_ack"]);
   }
 
   // ---- Direct Debit authority ----
@@ -569,6 +630,17 @@ function OutstandingSection({ client, runEvent }) {
               </div>
             )}
           </div>
+          {it.action && (
+            <button
+              className="btn btn-secondary action-cta"
+              onClick={() => {
+                if (typeof it.action.run === "string") runEvent(it.action.run);
+                else dispatch(it.action.run);
+              }}
+            >
+              {it.action.label} <Icon name="arrow-right" size={12} />
+            </button>
+          )}
         </div>
       ))}
     </div>
@@ -614,47 +686,63 @@ function ResolveSlideover() {
   const f = client.fields || {};
   const close = () => dispatch({ type: "CLOSE_RESOLVE" });
 
-  // Each card descriptor describes one resolution. `done` is true once the
-  // underlying field has been verified — when every card is done the
-  // slideover auto-closes.
-  const cards = [
-    {
+  // Build the card list dynamically from the open client's flagged fields.
+  // For Smith we recognise his four specific keys and render the named
+  // cards (account_no / tfn / address / risk_ack). For everyone else we
+  // render the generic per-field card (currently used for Nguyen's four
+  // bank.* fields in review).
+  const cards = [];
+  const SMITH_KEYS = new Set(["bank.account_no","investor.tfn","investor.residential_address","investment.risk_ack"]);
+
+  if (client.id === "smith") {
+    cards.push({
       id: "bank.account_no",
       title: "Account number — low confidence",
       kind: "review",
       done: f["bank.account_no"]?.status === "verified",
-      render: () => (
-        <ResolveAccountNo client={client} field={f["bank.account_no"]} dispatch={dispatch} />
-      ),
-    },
-    {
+      render: () => <ResolveAccountNo client={client} field={f["bank.account_no"]} dispatch={dispatch} />,
+    });
+    cards.push({
       id: "investor.tfn",
       title: "TFN checksum failed",
       kind: "failed",
       done: f["investor.tfn"]?.status === "verified",
-      render: () => (
-        <ResolveTFN client={client} field={f["investor.tfn"]} dispatch={dispatch} />
-      ),
-    },
-    {
+      render: () => <ResolveTFN client={client} field={f["investor.tfn"]} dispatch={dispatch} />,
+    });
+    cards.push({
       id: "investor.residential_address",
       title: "Residential address — sources disagree",
       kind: "conflict",
       done: f["investor.residential_address"]?.status === "verified",
-      render: () => (
-        <ResolveAddress client={client} field={f["investor.residential_address"]} dispatch={dispatch} />
-      ),
-    },
-    {
+      render: () => <ResolveAddress client={client} field={f["investor.residential_address"]} dispatch={dispatch} />,
+    });
+    cards.push({
       id: "investment.risk_ack",
       title: "Risk acknowledgement — not yet recorded",
       kind: "missing",
       done: f["investment.risk_ack"]?.status === "verified",
-      render: () => (
-        <ResolveRiskAck client={client} field={f["investment.risk_ack"]} dispatch={dispatch} />
-      ),
-    },
-  ];
+      render: () => <ResolveRiskAck client={client} field={f["investment.risk_ack"]} dispatch={dispatch} />,
+    });
+  } else {
+    // Generic path — surface any field that's in review/failed/conflict.
+    const flaggedEntries = Object.entries(f).filter(([k, v]) => {
+      if (!v) return false;
+      if (SMITH_KEYS.has(k)) return false; // Smith-only keys
+      return ["review", "failed", "conflict"].includes(v.status);
+    });
+    for (const [key, field] of flaggedEntries) {
+      const def = FIELD_DEFS[key];
+      if (!def) continue;
+      const kind = field.status === "review" ? "review" : field.status === "conflict" ? "conflict" : "failed";
+      cards.push({
+        id: key,
+        title: `${def.label} — ${field.status === "review" ? "low confidence" : field.status === "conflict" ? "sources disagree" : "validation failed"}`,
+        kind,
+        done: f[key]?.status === "verified",
+        render: () => <ResolveGenericField client={client} fieldKey={key} field={field} def={def} dispatch={dispatch} />,
+      });
+    }
+  }
 
   const pending = cards.filter(c => !c.done);
   const resolvedCount = cards.length - pending.length;
@@ -708,9 +796,10 @@ function ResolveSlideover() {
               <button
                 className="btn btn-secondary"
                 onClick={() => {
-                  // Fast path — fire the existing script for demo speed.
-                  // The slideover will auto-close as fields flip verified.
-                  runEvent("resolve_exceptions");
+                  // Fast path — fire the appropriate batch-confirm script
+                  // for this client. The slideover auto-closes as fields
+                  // flip verified.
+                  runEvent(client.id === "smith" ? "resolve_exceptions" : "confirm_nguyen_bank");
                 }}
               >
                 Resolve all (accept suggestions)
@@ -727,6 +816,51 @@ function ResolveSlideover() {
 }
 
 // ---- Individual resolution cards ----
+
+// Generic per-field card — shows the extracted value, source line,
+// confidence (if any) and a single "Confirm" action. Used for any
+// non-Smith client's review/failed/conflict fields (currently Nguyen's
+// four bank.* fields).
+function ResolveGenericField({ client, fieldKey, field, def, dispatch }) {
+  const value = field?.value || "—";
+  const confidence = field?.confidence != null
+    ? `${Math.round(field.confidence * 100)}%`
+    : null;
+  const sourceLabel = field?.source || def?.source || "—";
+  const onConfirm = () => {
+    dispatch({
+      type: "UPDATE_CLIENT_FIELDS",
+      clientId: client.id,
+      updates: { [fieldKey]: { value, status: "verified", source: "Confirmed by Rachel Lee" } },
+    });
+    dispatch({
+      type: "ADD_ACTIVITY",
+      clientId: client.id,
+      entry: { actor: "Rachel Lee", desc: `Confirmed ${def?.label || fieldKey} · ${value}` },
+    });
+  };
+  return (
+    <>
+      <div className="resolve-why">
+        {field?.status === "review"
+          ? "Low-confidence OCR extraction. Confidence below the 80% auto-verify threshold."
+          : field?.status === "conflict"
+            ? "Two sources disagree on this value. Pick the one to use."
+            : field?.error || "Validation failed."}
+      </div>
+      <div className="resolve-evidence">
+        <div className="resolve-evidence-head">Source · {sourceLabel}</div>
+        <div className="resolve-evidence-snip">
+          {def?.label || fieldKey}: <strong>{value}</strong>
+          {confidence && <span className="t-muted" style={{ marginLeft: 8 }}>Confidence: {confidence}</span>}
+        </div>
+      </div>
+      <div className="resolve-actions">
+        <button className="btn btn-primary" onClick={onConfirm}>Confirm {value}</button>
+      </div>
+    </>
+  );
+}
 
 function ResolveAccountNo({ client, field, dispatch }) {
   const value = field?.value || "•••• 8412";

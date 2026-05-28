@@ -549,6 +549,7 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .action-sev.missing { background: var(--missing-soft); color: var(--missing); }
 .action-sev.attention { background: var(--attention-soft); color: var(--attention); }
 .action-body { flex: 1; min-width: 0; }
+.action-cta { flex-shrink: 0; align-self: center; white-space: nowrap; }
 .action-title { font-weight: 600; font-size: 13.5px; }
 .action-why { color: var(--text-secondary); font-size: 12.5px; margin-top: 3px; }
 .action-await {

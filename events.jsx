@@ -695,7 +695,80 @@ SCRIPTS.auto_chase_okafor = async ({ dispatch, toast, wait, setProc }) => {
   setProc("okafor", "Renewal request sent · awaiting client", steps);
   await wait(500);
   dispatch({ type: "ADD_ACTIVITY", clientId: "okafor", entry: { actor: "System", desc: "Renewal request emailed to client via Microsoft 365" } });
+  dispatch({ type: "SET_CLIENT_STATUS", clientId: "okafor", lastActivity: "just now" });
   toast("Renewal request sent · awaiting client", "info");
+};
+
+// ---------------------------------------------------------------
+// Brennan follow-up — operator-triggered second-contact email
+// when the original ID-renewal request has gone unanswered.
+// ---------------------------------------------------------------
+SCRIPTS.send_brennan_followup = async ({ dispatch, toast, wait, setProc }) => {
+  dispatch({ type: "SET_MODULE", module: "clients" });
+  dispatch({ type: "SELECT_CLIENT", id: "brennan" });
+  let steps = [STEP("Drafting follow-up reminder", "current"), STEP("Sending via Microsoft 365")];
+  setProc("brennan", "Drafting follow-up reminder…", steps);
+  await wait(TIMINGS.draftChase);
+  steps = advance(steps, "Drafting follow-up reminder", "Sending via Microsoft 365");
+  setProc("brennan", "Sending via Microsoft 365…", steps);
+  await wait(TIMINGS.send);
+  steps = updateSteps(steps, "Sending via Microsoft 365", "done");
+  setProc("brennan", "Follow-up reminder sent · awaiting client", steps);
+  await wait(500);
+  dispatch({ type: "ADD_ACTIVITY", clientId: "brennan", entry: { actor: "Rachel Lee", desc: "Follow-up reminder emailed to A. Brennan · 2nd contact" } });
+  dispatch({ type: "SET_CLIENT_STATUS", clientId: "brennan", lastActivity: "just now" });
+  toast("Follow-up reminder sent to A. Brennan", "ready");
+};
+
+// ---------------------------------------------------------------
+// Nguyen risk-ack — operator emails the risk-acknowledgement form
+// for client signature. Field doesn't flip yet; the signed copy
+// arrives separately (out of scope for this beat).
+// ---------------------------------------------------------------
+SCRIPTS.send_nguyen_risk_ack = async ({ dispatch, toast, wait, setProc }) => {
+  dispatch({ type: "SET_MODULE", module: "clients" });
+  dispatch({ type: "SELECT_CLIENT", id: "nguyen" });
+  let steps = [STEP("Drafting risk-acknowledgement form", "current"), STEP("Sending via DocuSign")];
+  setProc("nguyen", "Drafting risk-acknowledgement form…", steps);
+  await wait(TIMINGS.draftChase);
+  steps = advance(steps, "Drafting risk-acknowledgement form", "Sending via DocuSign");
+  setProc("nguyen", "Sending via DocuSign…", steps);
+  await wait(TIMINGS.send);
+  steps = updateSteps(steps, "Sending via DocuSign", "done");
+  setProc("nguyen", "Risk-ack form sent · awaiting signature", steps);
+  await wait(500);
+  dispatch({ type: "ADD_ACTIVITY", clientId: "nguyen", entry: { actor: "Rachel Lee", desc: "Risk-acknowledgement form sent to L. Nguyen for signature via DocuSign" } });
+  dispatch({ type: "SET_CLIENT_STATUS", clientId: "nguyen", lastActivity: "just now" });
+  toast("Risk-ack form sent · awaiting client signature", "ready");
+};
+
+// ---------------------------------------------------------------
+// Nguyen bank fast-path — confirm all four review-state bank fields
+// in one go. Mirrors Smith's resolve_exceptions in shape.
+// ---------------------------------------------------------------
+SCRIPTS.confirm_nguyen_bank = async ({ dispatch, toast, wait, setProc, state }) => {
+  dispatch({ type: "SELECT_CLIENT", id: "nguyen" });
+  let steps = [STEP("Recording your decisions", "current"), STEP("Re-validating")];
+  setProc("nguyen", "Recording your decisions…", steps);
+  await wait(600);
+  steps = advance(steps, "Recording your decisions", "Re-validating");
+  setProc("nguyen", "Re-validating…", steps);
+  await wait(600);
+  const nguyen = state().clients.find(c => c.id === "nguyen");
+  const updates = {};
+  for (const k of ["bank.institution","bank.bsb","bank.account_no","bank.account_name"]) {
+    const cur = nguyen?.fields?.[k];
+    if (cur && cur.status === "review") {
+      updates[k] = { value: cur.value, status: "verified", source: "Confirmed by Rachel Lee" };
+    }
+  }
+  dispatch({ type: "UPDATE_CLIENT_FIELDS", clientId: "nguyen", updates });
+  dispatch({ type: "ADD_ACTIVITY", clientId: "nguyen", entry: { actor: "Rachel Lee", desc: `Confirmed ${Object.keys(updates).length} extracted bank fields · all verified` } });
+  dispatch({ type: "SET_CLIENT_STATUS", clientId: "nguyen", lastActivity: "just now" });
+  steps = updateSteps(steps, "Re-validating", "done");
+  setProc("nguyen", `${Object.keys(updates).length} bank fields verified`, steps);
+  await wait(500);
+  toast("Bank fields verified", "ready");
 };
 
 // ---------------------------------------------------------------

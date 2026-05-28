@@ -175,7 +175,9 @@ function reducer(state, action) {
 
     case "SET_CLIENT_STATUS": {
       const { clientId, status, lastActivity } = action;
-      const clients = state.clients.map(c => c.id === clientId ? { ...c, status, lastActivity: lastActivity ?? c.lastActivity } : c);
+      const clients = state.clients.map(c => c.id === clientId
+        ? { ...c, status: status ?? c.status, lastActivity: lastActivity ?? c.lastActivity }
+        : c);
       return { ...state, clients };
     }
 
