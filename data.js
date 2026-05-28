@@ -236,6 +236,7 @@ const SMITH_SHELL = {
   forms: [],
   documents: [],
   activity: [],
+  aiSequences: [],
 };
 
 // ---------------------------------------------------------------
@@ -308,6 +309,61 @@ const SEED_CLIENTS = [
       { time: "8m ago", actor: "System", desc: "Account name fuzzy match — 95% to \u2018Nguyen Super Fund\u2019 \u00b7 flagged for review" },
     ],
     readinessSummary: "Awaiting bank verification",
+  aiSequences: [
+      {
+        id: "nguyen_bank_extract", title: "Extracting bank statement", icon: "doc",
+        state: "running", source: "Bank_Statement_Westpac_May26.pdf", startedAgo: "12m",
+        summary: "4 of 5 steps \u00b7 1 field flagged low-confidence",
+        steps: [
+          { label: "Classify document", state: "done", evidence: "Bank statement \u00b7 Westpac format v3" },
+          { label: "Extract details (OCR + AI)", state: "done", evidence: "4 banking fields extracted in 1.8s" },
+          { label: "BSB register lookup", state: "done", evidence: "033 089 \u00b7 Westpac Brunswick (validated)" },
+          { label: "Account name fuzzy match", state: "current", evidence: "95% match \u2018Nguyen Super Fund\u2019 vs entity \u2018Nguyen Super Fund\u2019" },
+          { label: "Update checklist", state: "pending", evidence: null },
+        ],
+      },
+      {
+        id: "nguyen_dvs_linh", title: "DVS verification \u2014 L. Nguyen", icon: "shield-check",
+        state: "done", source: "Photo_ID_L_Nguyen.pdf", startedAgo: "2d", completedAgo: "2d",
+        summary: "4 of 4 attributes matched \u00b7 ref DVS-37214",
+        steps: [
+          { label: "Match given names", state: "done", evidence: "Linh Tuan \u00b7 exact" },
+          { label: "Match surname", state: "done", evidence: "Nguyen \u00b7 exact" },
+          { label: "Match DOB", state: "done", evidence: "23/03/1965 \u00b7 exact" },
+          { label: "Match document number", state: "done", evidence: "082 491 776 \u00b7 exact" },
+        ],
+      },
+      {
+        id: "nguyen_dvs_mai", title: "DVS verification \u2014 M. Nguyen", icon: "shield-check",
+        state: "done", source: "Photo_ID_M_Nguyen.pdf", startedAgo: "2d", completedAgo: "2d",
+        summary: "4 of 4 attributes matched \u00b7 ref DVS-37215",
+        steps: [
+          { label: "Match given names", state: "done", evidence: "Mai \u00b7 exact" },
+          { label: "Match surname", state: "done", evidence: "Nguyen \u00b7 exact" },
+          { label: "Match DOB", state: "done", evidence: "08/12/1968 \u00b7 exact" },
+          { label: "Match document number", state: "done", evidence: "114 327 802 \u00b7 exact" },
+        ],
+      },
+      {
+        id: "nguyen_deed_abr", title: "ABR lookup against trust deed", icon: "doc",
+        state: "done", source: "Trust_Deed_Nguyen_Super.pdf", startedAgo: "3d", completedAgo: "3d",
+        summary: "ABN 26 481 029 374 confirmed against ABR",
+        steps: [
+          { label: "Extract entity details", state: "done", evidence: "Name, ABN, trustees, establishment date" },
+          { label: "ABR API lookup", state: "done", evidence: "26 481 029 374 \u00b7 active \u00b7 SMSF" },
+          { label: "Trustee names cross-check", state: "done", evidence: "Linh T. Nguyen, Mai Nguyen \u00b7 match" },
+        ],
+      },
+      {
+        id: "nguyen_tfn_check", title: "TFN checksum validation", icon: "shield-check",
+        state: "done", source: "Client input", startedAgo: "1d", completedAgo: "1d",
+        summary: "412 \u2022\u2022\u2022 765 \u00b7 checksum OK",
+        steps: [
+          { label: "Format check (9 digits)", state: "done", evidence: "pass" },
+          { label: "Modulus-11 checksum", state: "done", evidence: "computed digit matches input" },
+        ],
+      },
+    ],
   },
 
   // ---- Okafor — long-standing wholesale client, certificate just expired
@@ -372,6 +428,50 @@ const SEED_CLIENTS = [
       { time: "3h ago", actor: "System", desc: "Auto-chase queued \u00b7 awaiting trigger" },
     ],
     readinessSummary: "Certificate expired",
+  aiSequences: [
+      {
+        id: "okafor_cert_monitor", title: "Wholesale certificate expiry monitor", icon: "warning",
+        state: "alert", source: "Wholesale_Cert_2024.pdf", startedAgo: "23 months", completedAgo: "4d",
+        summary: "Certificate expired 23/05/2026 \u00b7 application blocked",
+        steps: [
+          { label: "Read certification date", state: "done", evidence: "23/05/2024 \u00b7 Patel & Wong CA" },
+          { label: "Compute expiry (24-month rule)", state: "done", evidence: "23/05/2026" },
+          { label: "Pre-expiry chase scheduled", state: "done", evidence: "14 days before expiry" },
+          { label: "Expiry reached \u2014 application blocked", state: "alert", evidence: "23/05/2026 \u00b7 4 days ago" },
+        ],
+      },
+      {
+        id: "okafor_chase_draft", title: "Renewal request \u2014 drafting email", icon: "send",
+        state: "queued", source: "Microsoft 365 \u00b7 outbox", startedAgo: "4d",
+        summary: "Awaiting auto-chase trigger",
+        steps: [
+          { label: "Identify expired item", state: "done", evidence: "Wholesale_Cert_2024.pdf" },
+          { label: "Compose renewal request", state: "done", evidence: "Template: cert-renewal-v3 \u00b7 personalised" },
+          { label: "Schedule send", state: "queued", evidence: "Next business day 09:00 AEDT" },
+        ],
+      },
+      {
+        id: "okafor_orig_dvs", title: "DVS verification \u2014 D. Okafor", icon: "shield-check",
+        state: "done", source: "Photo_ID_D_Okafor.pdf", startedAgo: "23 months", completedAgo: "23 months",
+        summary: "4 of 4 attributes matched \u00b7 ref DVS-19833",
+        steps: [
+          { label: "Match given names", state: "done", evidence: "David Olusegun \u00b7 exact" },
+          { label: "Match surname", state: "done", evidence: "Okafor \u00b7 exact" },
+          { label: "Match DOB", state: "done", evidence: "11/04/1976 \u00b7 exact" },
+          { label: "Match document number", state: "done", evidence: "PA8472190 \u00b7 exact" },
+        ],
+      },
+      {
+        id: "okafor_bank_refresh", title: "Bank statement refresh", icon: "doc",
+        state: "done", source: "Bank_Statement_WPC_Apr26.pdf", startedAgo: "4 weeks", completedAgo: "4 weeks",
+        summary: "4 banking fields verified \u00b7 account name match",
+        steps: [
+          { label: "Extract banking details", state: "done", evidence: "Westpac Private \u00b7 BSB 033 188" },
+          { label: "Account name match", state: "done", evidence: "D O Okafor \u00b7 100% match" },
+          { label: "Update field provenance", state: "done", evidence: "4 fields refreshed" },
+        ],
+      },
+    ],
   },
 
   // ---- Brennan — Photo ID renewal in flight (chase email out, awaiting reply)
@@ -434,6 +534,61 @@ const SEED_CLIENTS = [
       { time: "6h ago", actor: "System", desc: "No reply yet \u00b7 follow-up scheduled for 30/05/2026" },
     ],
     readinessSummary: "Awaiting client reply",
+  aiSequences: [
+      {
+        id: "brennan_id_renewal_chase", title: "Photo ID renewal \u2014 awaiting reply", icon: "clock",
+        state: "running", source: "Microsoft 365 \u00b7 inbox monitor", startedAgo: "1d",
+        summary: "11 days until expiry \u00b7 1 reminder sent, no reply yet",
+        steps: [
+          { label: "Detect upcoming expiry", state: "done", evidence: "08/06/2026 \u00b7 within 14-day chase window" },
+          { label: "Draft renewal request", state: "done", evidence: "Template: id-renewal-v2" },
+          { label: "Send via Microsoft 365", state: "done", evidence: "a.brennan@example.com \u00b7 sent 1d ago" },
+          { label: "Watching for reply", state: "current", evidence: "No matching inbound \u00b7 follow-up scheduled 30/05/2026" },
+        ],
+      },
+      {
+        id: "brennan_id_monitor", title: "Photo ID expiry monitor", icon: "warning",
+        state: "running", source: "Othello policy engine", startedAgo: "6 months",
+        summary: "Chase window open \u00b7 11 days remaining",
+        steps: [
+          { label: "Read expiry from ID", state: "done", evidence: "08/06/2026 \u00b7 Driver\u2019s licence (VIC)" },
+          { label: "Set chase window", state: "done", evidence: "14 days before expiry" },
+          { label: "Window opened", state: "done", evidence: "25/05/2026 \u00b7 chase triggered" },
+          { label: "Tracking until renewal", state: "current", evidence: "Pending new ID upload" },
+        ],
+      },
+      {
+        id: "brennan_orig_dvs", title: "DVS verification \u2014 A. Brennan", icon: "shield-check",
+        state: "done", source: "Photo_ID_A_Brennan_2022.pdf", startedAgo: "23 months", completedAgo: "23 months",
+        summary: "4 of 4 attributes matched \u00b7 ref DVS-19002",
+        steps: [
+          { label: "Match given names", state: "done", evidence: "Aoife Marie \u00b7 exact" },
+          { label: "Match surname", state: "done", evidence: "Brennan \u00b7 exact" },
+          { label: "Match DOB", state: "done", evidence: "17/05/1979 \u00b7 exact" },
+          { label: "Match document number", state: "done", evidence: "078 421 553 \u00b7 exact" },
+        ],
+      },
+      {
+        id: "brennan_deed_abr", title: "ABR lookup against trust deed", icon: "doc",
+        state: "done", source: "Trust_Deed_Brennan_Family.pdf", startedAgo: "18 months", completedAgo: "18 months",
+        summary: "ABN 62 304 871 248 confirmed against ABR",
+        steps: [
+          { label: "Extract entity details", state: "done", evidence: "Name, ABN, trustee, date" },
+          { label: "ABR API lookup", state: "done", evidence: "62 304 871 248 \u00b7 active \u00b7 Trust" },
+          { label: "Trustee cross-check", state: "done", evidence: "Aoife M. Brennan \u00b7 match" },
+        ],
+      },
+      {
+        id: "brennan_fatca_processing", title: "FATCA / CRS self-cert processed", icon: "shield-check",
+        state: "done", source: "FATCA_CRS_Brennan.pdf", startedAgo: "14 months", completedAgo: "14 months",
+        summary: "Non-foreign-resident declaration \u00b7 ATO ref ATO-29841",
+        steps: [
+          { label: "Extract declaration", state: "done", evidence: "Foreign tax resident: No" },
+          { label: "Cross-check with TFN status", state: "done", evidence: "Consistent \u00b7 Australian only" },
+          { label: "File and notify ATO", state: "done", evidence: "ref ATO-29841 \u00b7 acknowledged" },
+        ],
+      },
+    ],
   },
 
   // ---- Whitlam — completed 8 days ago, all-green Fortlake + Hub24
@@ -504,6 +659,69 @@ const SEED_CLIENTS = [
       { time: "8 days ago", actor: "System", desc: "All forms complete \u00b7 Whitlam moved to Done" },
     ],
     readinessSummary: "Completed",
+  aiSequences: [
+      {
+        id: "whitlam_id_ocr", title: "Photo ID OCR + AI extraction", icon: "doc",
+        state: "done", source: "Photo_ID_E_Whitlam.pdf", startedAgo: "10 days", completedAgo: "10 days",
+        summary: "9 identity fields extracted in 2.1s",
+        steps: [
+          { label: "Classify document", state: "done", evidence: "Driver\u2019s licence (VIC) \u00b7 96% confidence" },
+          { label: "OCR text", state: "done", evidence: "9 fields detected" },
+          { label: "Structure extraction", state: "done", evidence: "Names, DOB, address, doc number, expiry" },
+        ],
+      },
+      {
+        id: "whitlam_dvs", title: "DVS verification \u2014 E. Whitlam", icon: "shield-check",
+        state: "done", source: "Photo_ID_E_Whitlam.pdf", startedAgo: "10 days", completedAgo: "10 days",
+        summary: "4 of 4 attributes matched \u00b7 ref DVS-38221",
+        steps: [
+          { label: "Match given names", state: "done", evidence: "Eleanor Marie \u00b7 exact" },
+          { label: "Match surname", state: "done", evidence: "Whitlam \u00b7 exact" },
+          { label: "Match DOB", state: "done", evidence: "12/09/1968 \u00b7 exact" },
+          { label: "Match document number", state: "done", evidence: "047 281 933 \u00b7 exact" },
+        ],
+      },
+      {
+        id: "whitlam_bank_extract", title: "Bank statement extracted + validated", icon: "doc",
+        state: "done", source: "Bank_Statement_CBA_Apr26.pdf", startedAgo: "9 days", completedAgo: "9 days",
+        summary: "4 banking fields verified \u00b7 BSB lookup OK \u00b7 name match 100%",
+        steps: [
+          { label: "Extract banking details", state: "done", evidence: "Commonwealth Bank \u00b7 BSB 063 132" },
+          { label: "BSB register lookup", state: "done", evidence: "063 132 \u00b7 CBA Carlton (validated)" },
+          { label: "Account name match", state: "done", evidence: "E M Whitlam vs Eleanor Marie Whitlam \u00b7 95%" },
+        ],
+      },
+      {
+        id: "whitlam_tfn_check", title: "TFN checksum validation", icon: "shield-check",
+        state: "done", source: "Client input", startedAgo: "9 days", completedAgo: "9 days",
+        summary: "823 \u2022\u2022\u2022 754 \u00b7 checksum OK",
+        steps: [
+          { label: "Format check", state: "done", evidence: "9 digits" },
+          { label: "Modulus-11 checksum", state: "done", evidence: "pass" },
+        ],
+      },
+      {
+        id: "whitlam_fortlake_pkg", title: "Fortlake application packaging", icon: "send",
+        state: "done", source: "Othello", startedAgo: "8 days", completedAgo: "8 days",
+        summary: "26 fields populated \u00b7 form ready for dispatch",
+        steps: [
+          { label: "Map fields onto form", state: "done", evidence: "Section 3, 4, 7, 10, 12 \u00b7 26 fields" },
+          { label: "Validate AML completeness", state: "done", evidence: "8/8 AML-required fields present" },
+          { label: "Render PDF", state: "done", evidence: "Fortlake_Application_Whitlam.pdf" },
+        ],
+      },
+      {
+        id: "whitlam_distribution", title: "Distribution & record-keeping", icon: "send",
+        state: "done", source: "Othello", startedAgo: "8 days", completedAgo: "8 days",
+        summary: "4 destinations recorded",
+        steps: [
+          { label: "Adviser copy", state: "done", evidence: "Catherine Halford" },
+          { label: "Platform submission \u00b7 Fortlake", state: "done", evidence: "ref FRT-48104" },
+          { label: "Filed to record-keeping vault", state: "done", evidence: "/Clients/Whitlam_Eleanor/Forms/" },
+          { label: "Audit trail entry", state: "done", evidence: "Rachel Lee \u00b7 20 May 2026" },
+        ],
+      },
+    ],
   },
 
   // ---- Costa — completed 14 days ago, $1.25M Netwealth wrap (company)
@@ -571,6 +789,72 @@ const SEED_CLIENTS = [
       { time: "14 days ago", actor: "System", desc: "All forms complete \u00b7 Costa Holdings moved to Done" },
     ],
     readinessSummary: "Completed",
+  aiSequences: [
+      {
+        id: "costa_asic_extract", title: "ASIC extract \u2014 entity verification", icon: "doc",
+        state: "done", source: "ASIC_Extract_Costa_Holdings.pdf", startedAgo: "16 days", completedAgo: "16 days",
+        summary: "ABN 84 622 481 037 confirmed \u00b7 2 directors verified",
+        steps: [
+          { label: "Classify document", state: "done", evidence: "ASIC company extract \u00b7 current" },
+          { label: "Extract entity + directors", state: "done", evidence: "Costa Holdings Pty Ltd \u00b7 2 directors" },
+          { label: "ABR API lookup", state: "done", evidence: "84 622 481 037 \u00b7 active \u00b7 Australian Private Company" },
+          { label: "Director cross-check", state: "done", evidence: "Anthony J. Costa, Maria L. Costa \u00b7 match" },
+        ],
+      },
+      {
+        id: "costa_dvs_a", title: "DVS verification \u2014 A. Costa", icon: "shield-check",
+        state: "done", source: "Photo_ID_A_Costa.pdf", startedAgo: "15 days", completedAgo: "15 days",
+        summary: "4 of 4 attributes matched \u00b7 ref DVS-38104",
+        steps: [
+          { label: "Match given names", state: "done", evidence: "Anthony Joseph \u00b7 exact" },
+          { label: "Match surname", state: "done", evidence: "Costa \u00b7 exact" },
+          { label: "Match DOB", state: "done", evidence: "04/07/1958 \u00b7 exact" },
+          { label: "Match document number", state: "done", evidence: "PA5621038 \u00b7 exact" },
+        ],
+      },
+      {
+        id: "costa_dvs_m", title: "DVS verification \u2014 M. Costa", icon: "shield-check",
+        state: "done", source: "Photo_ID_M_Costa.pdf", startedAgo: "15 days", completedAgo: "15 days",
+        summary: "4 of 4 attributes matched \u00b7 ref DVS-38105",
+        steps: [
+          { label: "Match given names", state: "done", evidence: "Maria Louise \u00b7 exact" },
+          { label: "Match surname", state: "done", evidence: "Costa \u00b7 exact" },
+          { label: "Match DOB", state: "done", evidence: "12/03/1961 \u00b7 exact" },
+          { label: "Match document number", state: "done", evidence: "PA6201943 \u00b7 exact" },
+        ],
+      },
+      {
+        id: "costa_bank_extract", title: "Bank statement extracted + validated", icon: "doc",
+        state: "done", source: "Bank_Statement_ANZ_Mar26.pdf", startedAgo: "15 days", completedAgo: "15 days",
+        summary: "4 banking fields verified \u00b7 account in entity name",
+        steps: [
+          { label: "Extract banking details", state: "done", evidence: "ANZ Business \u00b7 BSB 013 030" },
+          { label: "BSB register lookup", state: "done", evidence: "013 030 \u00b7 ANZ Business Banking" },
+          { label: "Account name match", state: "done", evidence: "Costa Holdings Pty Ltd \u00b7 100% match to entity" },
+        ],
+      },
+      {
+        id: "costa_netwealth_pkg", title: "Netwealth wrap application packaging", icon: "send",
+        state: "done", source: "Othello", startedAgo: "14 days", completedAgo: "14 days",
+        summary: "20 fields populated \u00b7 form ready for dispatch",
+        steps: [
+          { label: "Map fields onto form", state: "done", evidence: "5 sections \u00b7 20 fields" },
+          { label: "Validate AML completeness", state: "done", evidence: "All required fields present" },
+          { label: "Render PDF", state: "done", evidence: "Netwealth_Wrap_Costa_Holdings.pdf" },
+        ],
+      },
+      {
+        id: "costa_distribution", title: "Distribution & record-keeping", icon: "send",
+        state: "done", source: "Othello", startedAgo: "14 days", completedAgo: "14 days",
+        summary: "4 destinations recorded",
+        steps: [
+          { label: "Adviser copy", state: "done", evidence: "Sanjay Patel" },
+          { label: "Platform submission \u00b7 Netwealth", state: "done", evidence: "ref NWL-42198" },
+          { label: "Filed to record-keeping vault", state: "done", evidence: "/Clients/Costa_Holdings/Forms/" },
+          { label: "Audit trail entry", state: "done", evidence: "Rachel Lee \u00b7 14 May 2026" },
+        ],
+      },
+    ],
   },
 ];
 

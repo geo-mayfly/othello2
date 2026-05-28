@@ -66,65 +66,138 @@ function ClientFile() {
       </div>
 
       <div className="cf-body">
-        {proc?.clientId === client.id && <ProcessingBanner proc={proc} queued={state.procQueue.length} />}
+        <div className="cf-main">
+          <SummaryCards client={client} />
 
-        <SummaryCards client={client} />
+          {isHero && <OutstandingSection client={client} runEvent={runEvent} dispatch={dispatch} />}
 
-        {isHero && <OutstandingSection client={client} runEvent={runEvent} dispatch={dispatch} />}
-
-        <ClientFileTabs client={client} fieldsFlash={fieldsFlash[client.id] || {}} formsFlash={formsFlash[client.id] || {}} />
+          <ClientFileTabs client={client} fieldsFlash={fieldsFlash[client.id] || {}} formsFlash={formsFlash[client.id] || {}} />
+        </div>
+        <ActivityPanel
+          client={client}
+          liveProc={proc?.clientId === client.id ? proc : null}
+          queued={state.procQueue.length}
+        />
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------
-// Processing banner
+// Activity panel — floating right-column inside the client container.
+// Renders the live proc (if running on this client) as the top card,
+// plus every seeded aiSequence entry from data.js. Each card is its
+// own expandable record of an AI work item with sub-steps + evidence.
 // ---------------------------------------------------------------
-function ProcessingBanner({ proc, queued }) {
-  // Expand by default when a distribution beat is running, so the
-  // four destinations are visible without an extra click.
-  const hasDist = Array.isArray(proc.dist) && proc.dist.length > 0;
-  const [expanded, setExpanded] = useState(hasDist);
-  // Keep it expanded once a dist starts; it auto-closes when proc clears.
-  useEffect(() => { if (hasDist) setExpanded(true); }, [hasDist]);
+function ActivityPanel({ client, liveProc, queued }) {
+  const seeded = client.aiSequences || [];
+  const liveCard = liveProc ? procToCard(liveProc) : null;
+  const cards = liveCard ? [liveCard, ...seeded] : seeded;
+
+  if (cards.length === 0) return null;
+
+  const running = cards.filter(c => c.state === "running" || c.state === "live").length;
+  const alert = cards.filter(c => c.state === "alert" || c.state === "queued").length;
+  const done = cards.filter(c => c.state === "done").length;
 
   return (
-    <div className="proc-banner">
-      <div className="proc-dot"></div>
-      <div className="proc-msg">{proc.message}</div>
-      {queued > 0 && <span className="pill" style={{ fontSize: 11 }}>{queued} queued</span>}
-      {proc.steps?.length > 0 && (
-        <span className="proc-expand" onClick={() => setExpanded(e => !e)}>
-          {expanded ? "▾ hide" : "▸ details"}
+    <aside className="activity-panel">
+      <div className="activity-panel-header">
+        <span className="activity-panel-title">Activity</span>
+        <span className="activity-panel-counts">
+          {running > 0 && <span className="ap-count running">{running} running</span>}
+          {alert > 0 && <span className="ap-count alert">{alert} need attention</span>}
+          {done > 0 && <span className="ap-count done">{done} complete</span>}
         </span>
-      )}
-      {expanded && proc.steps?.length > 0 && (
-        <div style={{ flexBasis: "100%" }}>
-          <div className="proc-steps">
-            {proc.steps.map((s, i) => (
-              <div key={i} className={`proc-step ${s.state}`}>
-                <span className="step-mark">{s.state === "done" && <Icon name="check" size={11} style={{ color: "white" }} />}</span>
-                <span>{s.label}</span>
-              </div>
-            ))}
-          </div>
-          {hasDist && (
-            <div className="dist-strip">
-              <div className="dist-title">Distribution & record-keeping</div>
-              {proc.dist.map((d) => (
-                <div key={d.id} className={`dist-step ${d.state}`}>
-                  <span className="dist-step-mark">
-                    {d.state === "done"
-                      ? <Icon name="check" size={11} style={{ color: "white" }} />
-                      : <Icon name={d.icon || "send"} size={11} />}
-                  </span>
-                  <span>{d.label}</span>
-                  <span className="dist-step-target">{d.target}</span>
-                </div>
-              ))}
+        {queued > 0 && <span className="pill" style={{ fontSize: 11 }}>{queued} queued</span>}
+      </div>
+      <div className="activity-panel-body">
+        {cards.map((seq, i) => (
+          <ActivityCard key={seq.id || `live-${i}`} seq={seq} initiallyOpen={seq.state === "live" || seq.state === "running" || i === 0} />
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function procToCard(proc) {
+  // Translate the active proc.steps shape into the aiSequence card shape.
+  // The live card animates and is always rendered at the top.
+  const steps = (proc.steps || []).map((s, i) => ({
+    label: s.label,
+    state: s.state === "done" ? "done" : (s.state === "current" ? "current" : "pending"),
+    evidence: null,
+  }));
+  // If a distribution strip is attached, append its rows as steps (preserves
+  // the existing dispatch-flow story inside the new activity-panel chrome).
+  if (Array.isArray(proc.dist) && proc.dist.length > 0) {
+    proc.dist.forEach(d => {
+      steps.push({
+        label: d.label,
+        state: d.state === "done" ? "done" : (d.state === "current" ? "current" : "pending"),
+        evidence: d.target || null,
+      });
+    });
+  }
+  return {
+    id: "live",
+    title: proc.message || "Processing…",
+    icon: "send",
+    state: "live",
+    source: null,
+    summary: null,
+    steps,
+  };
+}
+
+function ActivityCard({ seq, initiallyOpen }) {
+  const [open, setOpen] = useState(!!initiallyOpen);
+  const stateClass = seq.state === "live" ? "live"
+                   : seq.state === "running" ? "running"
+                   : seq.state === "alert" ? "alert"
+                   : seq.state === "queued" ? "queued"
+                   : "done";
+
+  const StateGlyph = () => {
+    if (seq.state === "done") return <Icon name="check" size={12} />;
+    if (seq.state === "alert") return <Icon name="warning" size={12} />;
+    if (seq.state === "queued") return <Icon name="clock" size={12} />;
+    return <span className="ap-dot" />; // live / running
+  };
+
+  return (
+    <div className={`activity-card ${stateClass}`}>
+      <div className="activity-card-header" onClick={() => setOpen(o => !o)}>
+        <span className="activity-card-state"><StateGlyph /></span>
+        <div className="activity-card-titles">
+          <div className="activity-card-title">{seq.title}</div>
+          {seq.summary && <div className="activity-card-summary">{seq.summary}</div>}
+        </div>
+        <div className="activity-card-meta">
+          {seq.startedAgo && !seq.completedAgo && <span className="t-muted" style={{ fontSize: 11 }}>{seq.startedAgo}</span>}
+          {seq.completedAgo && <span className="t-muted" style={{ fontSize: 11 }}>{seq.completedAgo} ago</span>}
+        </div>
+        <Icon name={open ? "chevron-down" : "chevron-right"} size={12} />
+      </div>
+      {open && seq.steps && seq.steps.length > 0 && (
+        <div className="activity-card-body">
+          {seq.source && (
+            <div className="activity-card-source">
+              <Icon name="doc" size={11} />
+              <span>{seq.source}</span>
             </div>
           )}
+          {seq.steps.map((s, i) => (
+            <div key={i} className={`activity-step ${s.state}`}>
+              <span className="activity-step-mark">
+                {s.state === "done" && <Icon name="check" size={10} style={{ color: "white" }} />}
+                {s.state === "alert" && <Icon name="warning" size={10} />}
+                {s.state === "queued" && <Icon name="clock" size={10} />}
+              </span>
+              <span className="activity-step-label">{s.label}</span>
+              {s.evidence && <span className="activity-step-evidence">{s.evidence}</span>}
+            </div>
+          ))}
         </div>
       )}
     </div>
