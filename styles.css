@@ -1190,15 +1190,184 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .paper {
   width: 100%; max-width: 800px;
   margin: 0 auto;
-  background: #FAFAF7;
-  color: #1A1A1A;
-  font-family: "Inter", system-ui;
-  padding: 64px 72px;
-  font-size: 11px;
-  line-height: 1.5;
+  background: #FFFFFF;
+  color: #000000;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  padding: 56px 64px;
+  font-size: 10.5px;
+  line-height: 1.45;
   box-shadow: 0 4px 24px rgba(0,0,0,0.4);
   border-radius: 2px;
 }
+
+/* ============================================================
+   Fortlake "form" paper — mirrors the real CFS-published PDF.
+   Black section bars, grey subsection bars, bordered field
+   boxes, digit-per-cell inputs, two-column joint layout,
+   risk + fund tables, signature row + reply-paid mail strip.
+   ============================================================ */
+.fp-page {
+  width: 100%; max-width: 800px;
+  margin: 0 auto 24px;
+  background: #FFFFFF;
+  color: #000000;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  padding: 44px 56px 36px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  border-radius: 2px;
+}
+.fp-paper-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  border-bottom: 2px solid #000;
+  padding-bottom: 14px; margin-bottom: 16px;
+}
+.fp-title { font-size: 18px; font-weight: 700; letter-spacing: -0.005em; }
+.fp-subtitle { font-size: 10.5px; color: #1A1A1A; margin-top: 2px; }
+.fp-paper-ref { font-size: 10.5px; color: #666; font-family: "Courier New", monospace; letter-spacing: 0.06em; }
+.fp-intro { font-size: 10.5px; margin: 0 0 8px; color: #1A1A1A; }
+.fp-x-inline {
+  display: inline-block; width: 12px; height: 12px;
+  border: 1px solid #000; text-align: center; font-weight: 700;
+  font-size: 10px; line-height: 11px;
+}
+
+/* Black section bar with white number + title */
+.fp-bar {
+  background: #000; color: #fff;
+  padding: 7px 10px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.02em;
+  display: flex; align-items: center; gap: 10px;
+  margin: 18px 0 8px;
+}
+.fp-bar-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  background: #fff; color: #000;
+  font-weight: 800; font-size: 11px;
+  flex-shrink: 0;
+}
+
+/* Grey subsection bar */
+.fp-subbar {
+  background: #CFCFCF; color: #000;
+  padding: 5px 10px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 12px 0 8px;
+}
+.fp-subbar.small { background: #E5E5E5; }
+
+/* Field labels (tight, above the input box) */
+.fp-label-tight { font-size: 10px; color: #1A1A1A; margin-bottom: 2px; }
+
+/* Bordered input box (looks like a fillable field) */
+.fp-box {
+  border: 1px solid #000;
+  background: #fff;
+  min-height: 22px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #000;
+  display: flex; align-items: center;
+  word-break: break-word;
+}
+.fp-box.empty { background: #fff; min-height: 22px; }
+.fp-box.flagged { background: rgba(226, 178, 58, 0.18); border-color: #B8830A; }
+.fp-box.failed  { background: rgba(220, 80, 80, 0.12); border-color: #B33B3B; }
+.fp-box.target  { animation: targetPulse 1.6s ease; }
+
+/* Digit-per-box input row */
+.fp-digit-row {
+  display: inline-flex; gap: 0;
+  font-family: "Courier New", monospace;
+  font-weight: 700; font-size: 12px;
+}
+.fp-digit {
+  width: 18px; height: 22px;
+  border: 1px solid #000; border-right: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #fff;
+}
+.fp-digit:last-child { border-right: 1px solid #000; }
+.fp-digit.on { color: #000; }
+.fp-digit-sep {
+  width: 10px; text-align: center;
+  font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.fp-digit-row.flagged .fp-digit { background: rgba(226, 178, 58, 0.18); border-color: #B8830A; }
+.fp-digit-row.failed .fp-digit  { background: rgba(220, 80, 80, 0.12); border-color: #B33B3B; }
+.fp-digit-row.target { animation: targetPulse 1.6s ease; }
+
+/* Tickable checkbox (X to indicate selected) */
+.fp-tick {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10.5px; color: #000;
+  margin-right: 16px; margin-bottom: 2px;
+}
+.fp-tick-box {
+  width: 14px; height: 14px;
+  border: 1px solid #000;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 11px;
+  flex-shrink: 0;
+}
+.fp-tick.small .fp-tick-box { width: 12px; height: 12px; font-size: 9.5px; }
+.fp-tick.small { font-size: 10px; }
+
+/* Row + two-column layouts */
+.fp-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+.fp-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.fp-investors { gap: 28px; }
+.fp-invlabel { background: #000; color: #fff; padding: 4px 10px; font-size: 10.5px; font-weight: 700; margin-bottom: 6px; }
+.fp-indented { margin-left: 22px; margin-bottom: 6px; }
+.fp-help { font-size: 9.5px; color: #555; font-style: italic; }
+
+/* Risk + fund tables */
+.fp-risk-table, .fp-fund-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 10px; margin: 6px 0 10px;
+}
+.fp-risk-table th, .fp-risk-table td,
+.fp-fund-table th, .fp-fund-table td {
+  border: 1px solid #000;
+  padding: 5px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.fp-risk-table th, .fp-fund-table th { background: #E5E5E5; font-weight: 700; }
+.fp-risk-table .fp-row-highlight { background: rgba(226, 178, 58, 0.18); font-weight: 600; }
+.fp-fund-table .fp-cell-target { animation: targetPulse 1.6s ease; }
+
+/* Signature row */
+.fp-sig-row { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 16px; }
+.fp-sig-line {
+  border: 1px solid #000;
+  min-height: 36px; padding: 6px 10px;
+  font-size: 14px; line-height: 22px;
+  margin-top: 4px;
+}
+
+/* Reply-paid mail strip + page foot */
+.fp-mail-strip {
+  margin-top: 18px;
+  padding: 8px 12px;
+  background: #F5F5F5;
+  border: 1px solid #000;
+  font-size: 10.5px;
+  text-align: center;
+}
+.fp-page-foot {
+  margin-top: 24px; padding-top: 10px;
+  border-top: 1px solid #000;
+  display: flex; justify-content: space-between;
+  font-size: 9.5px; color: #555;
+}
+.fp-x-inline { font-family: "Courier New", monospace; }
 .paper + .paper { margin-top: 24px; }
 .paper h1 { font-size: 18px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; }
 .paper h2 {
