@@ -32,15 +32,6 @@ function Overview() {
         </div>
       </div>
 
-      <div className="value-prop">
-        <Icon name="sparkle" size={18} />
-        <span>
-          <strong>Othello</strong> consolidates intake, AML/KYC, form completion and lodgement
-          into a single working surface for advisers and operations — every field traced to a source,
-          every dispatched form filed and audited.
-        </span>
-      </div>
-
       <div className="metric-grid">
         <MetricTile label="Forms processed" value={overviewMetrics.formsProcessed.value} unit={overviewMetrics.formsProcessed.unit} delta={overviewMetrics.formsProcessed.delta} sparkline={overviewMetrics.formsProcessed.sparkline} />
         <MetricTile label="Admin hours saved" value={`~${overviewMetrics.hoursSaved.value}`} unit={overviewMetrics.hoursSaved.unit} delta={overviewMetrics.hoursSaved.delta} sparkline={overviewMetrics.hoursSaved.sparkline} />

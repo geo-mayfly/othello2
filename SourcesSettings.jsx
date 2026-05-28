@@ -152,17 +152,6 @@ function BrandText({ text, sub, small }) {
   );
 }
 
-// Per-category icon for section headers
-const CAT_ICONS = {
-  "CRM": "people",
-  "Document storage": "docs",
-  "Identity & AML": "shield-check",
-  "Registries": "search",
-  "Investment platforms": "gauge",
-  "E-signature": "send",
-  "Email & notifications": "send",
-};
-
 // ---------------------------------------------------------------
 // Sources page
 // ---------------------------------------------------------------
@@ -202,42 +191,13 @@ function Sources() {
     <div className="page">
       <div className="page-header">
         <div>
-          <div className="page-title">Sources &amp; integrations</div>
-          <div className="page-sub">
-            Othello reads from the systems your firm already uses. Nothing is emailed
-            around; data stays inside your tenant.
-          </div>
+          <div className="page-title">Sources</div>
+          <div className="page-sub">Othello reads from where your data already lives.</div>
         </div>
-      </div>
-
-      {/* Hero summary tile */}
-      <div className="src-hero">
-        <div className="src-hero-stats">
-          <div className="src-hero-stat">
-            <div className="src-hero-num">{connectedCount}</div>
-            <div className="src-hero-label">Connected</div>
-          </div>
-          <div className="src-hero-divider" />
-          <div className="src-hero-stat">
-            <div className="src-hero-num">{availableCount}</div>
-            <div className="src-hero-label">Available</div>
-          </div>
-          <div className="src-hero-divider" />
-          <div className="src-hero-stat">
-            <div className="src-hero-num">{totalCount}</div>
-            <div className="src-hero-label">Total in marketplace</div>
-          </div>
-        </div>
-        <div className="src-hero-trust">
-          <Icon name="shield-check" size={14} style={{ color: "var(--ready)" }} />
-          <span>Encrypted in transit, hosted in your tenant.</span>
-          <span className="t-muted">·</span>
-          <span>SOC 2 Type II</span>
-          <span className="t-muted">·</span>
-          <span>ISO 27001</span>
-          <span className="t-muted">·</span>
-          <span>AUSTRAC-aligned</span>
-        </div>
+        <span className="src-counts">
+          <span><strong>{connectedCount}</strong> connected</span>
+          <span><strong>{availableCount}</strong> available</span>
+        </span>
       </div>
 
       {/* Search + filter */}
@@ -246,39 +206,27 @@ function Sources() {
           <Icon name="search" size={14} />
           <input
             className="src-search"
-            placeholder="Search integrations by name, provider, or category…"
+            placeholder="Search sources"
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
         </div>
         <div className="seg">
-          <button className={filter === "all" ? "on" : ""} onClick={() => setFilter("all")}>
-            All<span className="seg-count">{totalCount}</span>
-          </button>
-          <button className={filter === "connected" ? "on" : ""} onClick={() => setFilter("connected")}>
-            Connected<span className="seg-count">{connectedCount}</span>
-          </button>
-          <button className={filter === "available" ? "on" : ""} onClick={() => setFilter("available")}>
-            Available<span className="seg-count">{availableCount}</span>
-          </button>
+          <button className={filter === "all" ? "on" : ""} onClick={() => setFilter("all")}>All</button>
+          <button className={filter === "connected" ? "on" : ""} onClick={() => setFilter("connected")}>Connected</button>
+          <button className={filter === "available" ? "on" : ""} onClick={() => setFilter("available")}>Available</button>
         </div>
       </div>
 
-      {/* Grouped sections */}
       {Object.keys(grouped).length === 0 ? (
         <div className="empty-state" style={{ padding: "60px 20px" }}>
           <Icon name="search" size={24} />
-          <div className="t-secondary">No integrations match "{query}".</div>
+          <div className="t-secondary">No sources match "{query}".</div>
         </div>
       ) : (
         Object.entries(grouped).map(([cat, items]) => (
           <div key={cat} className="src-cat-section">
-            <div className="src-cat-header">
-              <Icon name={CAT_ICONS[cat] || "plug"} size={14} style={{ color: "var(--text-muted)" }} />
-              <span>{cat}</span>
-              <span className="t-muted">·</span>
-              <span className="t-muted">{items.length} integration{items.length === 1 ? "" : "s"}</span>
-            </div>
+            <div className="src-cat-header">{cat}</div>
             <div className="source-grid">
               {items.map((s, i) => (
                 <SourceCard key={i} s={s} />
@@ -287,17 +235,6 @@ function Sources() {
           </div>
         ))
       )}
-
-      {/* Request integration */}
-      <div className="src-request">
-        <div>
-          <div style={{ fontWeight: 600, fontSize: 13.5 }}>Don't see what you need?</div>
-          <div className="t-secondary" style={{ fontSize: 12.5, marginTop: 2 }}>
-            We add integrations weekly — request a new source and we'll prioritise it for your tenant.
-          </div>
-        </div>
-        <button className="btn btn-secondary">Request an integration</button>
-      </div>
     </div>
   );
 }
@@ -315,14 +252,7 @@ function SourceCard({ s }) {
         </div>
       </div>
       <div className="src-card-mid">
-        <div className="src-name-row">
-          <div className="src-name">{s.name}</div>
-          {s.verified && (
-            <span className="src-verified" title="Verified by Othello">
-              <Icon name="check" size={9} />
-            </span>
-          )}
-        </div>
+        <div className="src-name">{s.name}</div>
         {s.provider && <div className="src-provider">{s.provider}</div>}
         {s.description && <div className="src-desc">{s.description}</div>}
       </div>

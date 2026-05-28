@@ -522,17 +522,12 @@ function OutcomeCredit({ client }) {
   const { total: fieldsTotal } = countReadiness(client);
   return (
     <div className="outcome-credit">
-      <span className="oc-mark"><Icon name="shield-check" size={22} /></span>
+      <span className="oc-mark"><Icon name="check" size={18} /></span>
       <div>
-        <div className="oc-title">{client.name} · onboarded end-to-end</div>
-        <div className="oc-stats">
-          <span className="oc-stat"><strong>{fieldsTotal}</strong> fields resolved</span>
-          <span className="oc-stat"><strong>{terminal.length}</strong> form{terminal.length === 1 ? "" : "s"} lodged</span>
-          <span className="oc-stat">Othello time: <strong>~12 min</strong></span>
-          <span className="oc-stat" style={{ color: "var(--text-muted)" }}>(typical manual cycle: 2.5 hrs)</span>
-        </div>
+        <div className="oc-title">Lodged</div>
+        <div className="oc-stats">{fieldsTotal} fields · {terminal.length} form{terminal.length === 1 ? "" : "s"}</div>
       </div>
-      <span className="oc-cta">Filed · audit logged</span>
+      <span className="oc-cta">Audit logged</span>
     </div>
   );
 }
