@@ -19,6 +19,7 @@ const Icon = ({ name, size = 16, className = "", style = {} }) => {
     case "chevron-down":  return <svg {...props}><polyline points="6 9 12 15 18 9"/></svg>;
     case "chevron-left":  return <svg {...props}><polyline points="15 18 9 12 15 6"/></svg>;
     case "chevron-up":    return <svg {...props}><polyline points="18 15 12 9 6 15"/></svg>;
+    case "activity":      return <svg {...props}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
     case "alert":    return <svg {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
     case "clock":    return <svg {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
     case "shield":   return <svg {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;

@@ -281,49 +281,59 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 
 .cf-body { flex: 1; overflow-y: auto; padding: 16px 24px 80px; }
 
-/* Activity chip — collapsed status line in the client header */
+/* Activity chip — compact pill in the top-right of the client header */
 .activity-chip {
-  margin-top: 8px;
-  display: inline-flex; align-items: center; gap: 10px;
-  padding: 6px 10px 6px 8px;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 10px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 7px;
+  border-radius: 999px;
   font-size: 12.5px;
   color: var(--text-secondary);
   cursor: pointer;
-  width: 100%;
-  text-align: left;
+  max-width: 280px;
   transition: background 120ms, border-color 120ms;
 }
 .activity-chip:hover { background: var(--bg-elevated-2); border-color: var(--border-default); }
 .activity-chip.live  { border-color: var(--accent-line); }
-.activity-chip.open  { background: var(--bg-elevated-2); }
+.activity-chip.open  { background: var(--bg-elevated-2); border-color: var(--border-default); }
 .activity-chip-state {
-  width: 18px; height: 18px; flex-shrink: 0;
+  width: 14px; height: 14px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 50%;
-  background: var(--bg-elevated-2);
+  background: transparent;
   color: var(--text-muted);
 }
-.activity-chip.live .activity-chip-state { background: var(--accent-soft); color: var(--accent); }
+.activity-chip.live .activity-chip-state { color: var(--accent); }
 .activity-chip-text {
-  flex: 1; min-width: 0;
+  min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   color: var(--text-primary);
+  font-weight: 500;
 }
 .activity-chip.live .activity-chip-text { color: var(--accent); }
 .activity-chip svg:last-child { color: var(--text-muted); flex-shrink: 0; }
+.activity-chip-badge {
+  font-size: 10.5px; font-weight: 600;
+  padding: 0 6px;
+  min-width: 18px; height: 16px;
+  border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg-elevated-2);
+  color: var(--text-secondary);
+}
+.activity-chip-badge.missing { background: var(--missing-soft); color: var(--missing); }
 
 /* Anchor positions the floating window directly below the chip */
-.activity-anchor { position: relative; }
+.activity-anchor { position: relative; display: inline-flex; }
 
-/* Activity window — floating overlay opened from the chip */
+/* Activity window — floating overlay opened from the chip, right-anchored */
 .activity-window {
   position: absolute;
-  top: calc(100% + 6px);
-  left: 0; right: 0;
-  width: auto;
+  top: calc(100% + 8px);
+  right: 0; left: auto;
+  width: 440px;
+  max-width: calc(100vw - 32px);
   max-height: 540px;
   z-index: 40;
   display: flex; flex-direction: column;

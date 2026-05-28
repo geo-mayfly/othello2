@@ -48,10 +48,27 @@ function ClientFile() {
             </span>
           )}
           <span className={`pill ${statusTag.kind}`}>{statusTag.text}</span>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-            <button className="btn btn-secondary" onClick={() => dispatch({ type: "SET_CHAT_OPEN", open: true })}>
-              <Icon name="chat" size={14} /> Ask about this client
-            </button>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+            {hasAnyActivity && (
+              <div className="activity-anchor">
+                <ActivityChip
+                  client={client}
+                  liveProc={liveProc}
+                  seededSeqs={seededSeqs}
+                  queued={state.procQueue.length}
+                  open={activityOpen}
+                  onToggle={() => setActivityOpen(o => !o)}
+                />
+                {activityOpen && (
+                  <ActivityWindow
+                    client={client}
+                    liveProc={liveProc}
+                    queued={state.procQueue.length}
+                    onClose={() => setActivityOpen(false)}
+                  />
+                )}
+              </div>
+            )}
             <button className="btn btn-ghost btn-icon" title="More"><Icon name="more" /></button>
           </div>
         </div>
@@ -71,26 +88,6 @@ function ClientFile() {
             <span>{client.lastActivity}</span>
           </span>
         </div>
-        {hasAnyActivity && (
-          <div className="activity-anchor">
-            <ActivityChip
-              client={client}
-              liveProc={liveProc}
-              seededSeqs={seededSeqs}
-              queued={state.procQueue.length}
-              open={activityOpen}
-              onToggle={() => setActivityOpen(o => !o)}
-            />
-            {activityOpen && (
-              <ActivityWindow
-                client={client}
-                liveProc={liveProc}
-                queued={state.procQueue.length}
-                onClose={() => setActivityOpen(false)}
-              />
-            )}
-          </div>
-        )}
       </div>
 
       <div className="cf-body">
@@ -112,26 +109,21 @@ function ClientFile() {
 // list and per-step evidence.
 // ---------------------------------------------------------------
 function ActivityChip({ client, liveProc, seededSeqs, queued, open, onToggle }) {
-  // Live: prefer the active proc; otherwise pick the first running seed.
   const runningSeed = seededSeqs.find(s => s.state === "running");
-  const liveLabel = liveProc?.message
-    || (runningSeed && runningSeed.title)
-    || null;
+  const alertCount  = seededSeqs.filter(s => s.state === "alert").length;
   const isLive = !!(liveProc || runningSeed);
 
-  const counts = {
-    alert:   seededSeqs.filter(s => s.state === "alert").length,
-    queued:  seededSeqs.filter(s => s.state === "queued").length,
-    done:    seededSeqs.filter(s => s.state === "done").length,
-  };
+  // Compact label: live proc message > running seed title > "Activity".
+  const label = liveProc?.message
+    || (runningSeed && runningSeed.title)
+    || "Activity";
 
-  const idleSummary = (() => {
-    const parts = [];
-    if (counts.alert > 0)  parts.push(`${counts.alert} need attention`);
-    if (counts.queued > 0) parts.push(`${counts.queued} queued`);
-    if (counts.done > 0)   parts.push(`${counts.done} complete`);
-    return parts.length ? parts.join(" · ") : "Nothing in progress";
-  })();
+  // Subtle count next to the label so the operator can see at-a-glance
+  // there's something needing attention without opening the window.
+  const badgeText = alertCount > 0
+    ? `${alertCount}`
+    : (isLive ? null : `${seededSeqs.length}`);
+  const badgeKind = alertCount > 0 ? "missing" : "";
 
   return (
     <button
@@ -140,12 +132,10 @@ function ActivityChip({ client, liveProc, seededSeqs, queued, open, onToggle }) 
       title={open ? "Hide activity" : "Show activity"}
     >
       <span className="activity-chip-state">
-        {isLive ? <span className="ap-dot" /> : <Icon name="check" size={12} />}
+        {isLive ? <span className="ap-dot" /> : <Icon name="activity" size={11} />}
       </span>
-      <span className="activity-chip-text">
-        {isLive ? (liveLabel || "Processing…") : idleSummary}
-      </span>
-      {queued > 0 && <span className="pill" style={{ fontSize: 10.5, padding: "1px 7px" }}>{queued} queued</span>}
+      <span className="activity-chip-text">{label}</span>
+      {badgeText && <span className={`activity-chip-badge ${badgeKind}`}>{badgeText}</span>}
       <Icon name={open ? "chevron-up" : "chevron-down"} size={12} />
     </button>
   );
