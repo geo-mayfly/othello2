@@ -33,6 +33,7 @@ function AppShell() {
       {/* overlays */}
       {previewForm && <FortlakePreview />}
       {fieldMapSlideoverId && <FieldMapSlideover />}
+      <ResolveSlideover />
 
       {/* fixed-position bits */}
       <DemoPanel />

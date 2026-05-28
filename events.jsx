@@ -54,8 +54,8 @@ SCRIPTS.new_client_smith = async ({ dispatch, toast, wait, setProc, state }) => 
       "investor.email":    { value: "j.smith@familytrust.example",   status: "verified", source: "Dynamics" },
       "investor.phone":    { value: "+61 4•• ••• 482",                status: "verified", source: "Dynamics" },
       "entity.type":       { value: "Trust",                          status: "verified", source: "Dynamics" },
-      "adviser.name":      { value: "C. Halford",                     status: "verified", source: "Dynamics" },
-      "adviser.afsl":      { value: "324178",                         status: "verified", source: "Dynamics" },
+      "adviser.name":      { value: "Catherine Halford",                     status: "verified", source: "Dynamics" },
+      "adviser.afsl":      { value: "324 178",                        status: "verified", source: "Dynamics" },
     },
   });
   dispatch({ type: "ADD_ACTIVITY", clientId: "smith", entry: { actor: "System", desc: "Pulled 6 fields from Microsoft Dynamics · contact, entity type, adviser" } });
@@ -76,11 +76,13 @@ SCRIPTS.new_client_smith = async ({ dispatch, toast, wait, setProc, state }) => 
     updates: {
       "entity.name":       { value: "Smith Family Trust",   status: "verified", source: "Smith_Trust_Deed.pdf · p.1" },
       "entity.abn":        { value: "47 815 392 614",        status: "verified", source: "Smith_Trust_Deed.pdf · p.1" },
+      "entity.tfn":        { value: "412 587 904",           status: "verified", source: "Smith_Trust_Deed.pdf · p.1 · ATO checksum OK" },
       "entity.trustee":    { value: "John & Margaret Smith", status: "verified", source: "Smith_Trust_Deed.pdf · p.2" },
       "entity.trust_date": { value: "14/06/2014",            status: "verified", source: "Smith_Trust_Deed.pdf · p.1" },
+      "investor.title":    { value: "Mr",                    status: "verified", source: "Dynamics" },
     },
   });
-  dispatch({ type: "ADD_ACTIVITY", clientId: "smith", entry: { actor: "System", desc: "Trust deed found on SharePoint · extracted entity name, ABN, trustees, establishment date" } });
+  dispatch({ type: "ADD_ACTIVITY", clientId: "smith", entry: { actor: "System", desc: "Trust deed found on SharePoint · extracted entity name, ABN, TFN, trustees, establishment date" } });
 
   steps = advance(steps, "Pulling trust documents from SharePoint", "Building baseline checklist for the entity");
   setProc("smith", "Building baseline checklist for a trust client…", steps);
@@ -106,7 +108,7 @@ SCRIPTS.adviser_instruction = async ({ dispatch, toast, wait, setProc, state }) 
   const cid = state().selectedClientId || "smith";
   dispatch({ type: "SET_MODULE", module: "clients" });
   dispatch({ type: "SELECT_CLIENT", id: cid });
-  toast("Adviser brief received — C. Halford", "info");
+  toast("Adviser brief received — Catherine Halford", "info");
   let steps = [
     STEP("Reading adviser brief", "current"),
     STEP("Capturing investment details"),
@@ -117,6 +119,21 @@ SCRIPTS.adviser_instruction = async ({ dispatch, toast, wait, setProc, state }) 
   steps = advance(steps, "Reading adviser brief", "Capturing investment details");
   setProc(cid, "Capturing investment details from the brief…", steps);
   await wait(1000);
+
+  // First: populate the client's onboarding mandate so the "Onboarding to"
+  // summary card visibly fills in (it ships empty in SMITH_SHELL).
+  dispatch({
+    type: "SET_CLIENT_ONBOARDING_TO",
+    clientId: cid,
+    onboardingTo: {
+      product: "Fortlake Real-Income Fund",
+      productType: "wholesale managed fund",
+      route: "Hub24",
+      amount: "AUD 250,000",
+      support: "wholesale, no advice",
+    },
+  });
+
   dispatch({
     type: "UPDATE_CLIENT_FIELDS", clientId: cid,
     updates: {
@@ -127,10 +144,10 @@ SCRIPTS.adviser_instruction = async ({ dispatch, toast, wait, setProc, state }) 
     },
   });
   steps = updateSteps(steps, "Capturing investment details", "done");
-  setProc(cid, "Brief processed · 4 investment fields ready", steps);
+  setProc(cid, "Brief processed · onboarding mandate set · 4 investment fields ready", steps);
   await wait(500);
-  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "Adviser · C. Halford", desc: "Apply John to Fortlake Real-Income via Hub24 — wholesale, no advice · $250,000" } });
-  toast("Adviser brief applied · 4 fields filled", "ready");
+  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "Adviser · Catherine Halford", desc: "Apply John to Fortlake Real-Income via Hub24 — wholesale, no advice · $250,000" } });
+  toast("Adviser brief applied · mandate set · 4 fields filled", "ready");
 };
 
 // ---------------------------------------------------------------
@@ -187,7 +204,7 @@ SCRIPTS.confirm_forms = async ({ dispatch, toast, wait, setProc, state }) => {
   steps = updateSteps(steps, "Building checklist", "done");
   setProc(cid, `${proposed.length} form${proposed.length === 1 ? "" : "s"} confirmed · checklist established`, steps);
   await wait(400);
-  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "R. Lee", desc: `Confirmed ${proposed.length} required forms · checklist established` } });
+  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "Rachel Lee", desc: `Confirmed ${proposed.length} required forms · checklist established` } });
   toast("Forms confirmed · checklist now in scope", "ready");
 };
 
@@ -334,7 +351,7 @@ SCRIPTS.adviser_occupation = async ({ dispatch, toast, wait, setProc }) => {
   steps = updateSteps(steps, "Validating", "done");
   setProc("smith", "1 field updated", steps);
   await wait(400);
-  dispatch({ type: "ADD_ACTIVITY", clientId: "smith", entry: { actor: "Adviser · C. Halford", desc: "Updated occupation in Dynamics" } });
+  dispatch({ type: "ADD_ACTIVITY", clientId: "smith", entry: { actor: "Adviser · Catherine Halford", desc: "Updated occupation in Dynamics" } });
   toast("Occupation updated · Verified from Dynamics", "ready");
 };
 
@@ -417,9 +434,9 @@ SCRIPTS.resolve_exceptions = async ({ dispatch, toast, wait, setProc, state }) =
   dispatch({
     type: "UPDATE_CLIENT_FIELDS", clientId: "smith",
     updates: {
-      "bank.account_no":              { value: "•••• 8412", status: "verified", source: "Confirmed by R. Lee" },
-      "investor.tfn":                 { value: "623 ••• 458", status: "verified", source: "Corrected by R. Lee · checksum OK" },
-      "investor.residential_address": { value: "Unit 4, 42 Linden St, Carlton VIC 3053", status: "verified", source: "Resolved · Dynamics chosen by R. Lee" },
+      "bank.account_no":              { value: "•••• 8412", status: "verified", source: "Confirmed by Rachel Lee" },
+      "investor.tfn":                 { value: "623 ••• 458", status: "verified", source: "Corrected by Rachel Lee · checksum OK" },
+      "investor.residential_address": { value: "Unit 4, 42 Linden St, Carlton VIC 3053", status: "verified", source: "Resolved · Dynamics chosen by Rachel Lee" },
       "investment.risk_ack":          { value: "Acknowledged", status: "verified", source: "Client signature · 27 May" },
     },
   });
@@ -439,12 +456,12 @@ SCRIPTS.resolve_exceptions = async ({ dispatch, toast, wait, setProc, state }) =
 
   if (allReady) {
     setProc("smith", "3 exceptions resolved · all required fields ready", steps);
-    dispatch({ type: "ADD_ACTIVITY", clientId: "smith", entry: { actor: "R. Lee", desc: "Resolved 3 flagged items · Fortlake application ready for review" } });
+    dispatch({ type: "ADD_ACTIVITY", clientId: "smith", entry: { actor: "Rachel Lee", desc: "Resolved 3 flagged items · Fortlake application ready for review" } });
     toast("Fortlake application ready for review", "ready");
   } else {
     const missing = required.filter(k => checkFields[k]?.status !== "verified");
     setProc("smith", `3 exceptions resolved · ${missing.length} field${missing.length === 1 ? "" : "s"} still outstanding`, steps);
-    dispatch({ type: "ADD_ACTIVITY", clientId: "smith", entry: { actor: "R. Lee", desc: `Resolved 3 flagged items · ${missing.length} still outstanding before review` } });
+    dispatch({ type: "ADD_ACTIVITY", clientId: "smith", entry: { actor: "Rachel Lee", desc: `Resolved 3 flagged items · ${missing.length} still outstanding before review` } });
     toast(`3 resolved · ${missing.length} field${missing.length === 1 ? "" : "s"} still outstanding`, "attention");
   }
   await wait(500);
@@ -481,28 +498,126 @@ SCRIPTS.dispatch_form = async ({ dispatch, toast, wait, setProc, state }, opts =
     return;
   }
   dispatch({ type: "CLOSE_PREVIEW" });
-  const designationRaw = formDef.sourcePlatform && formDef.sourcePlatform !== "—" ? formDef.sourcePlatform : "EWM";
-  const designation = designationRaw;
+  const designation = formDef.sourcePlatform && formDef.sourcePlatform !== "—" ? formDef.sourcePlatform : "EWM";
+  const adviserName = client.adviser || "Adviser";
+
+  // Phase 1 — package and send. The proc-banner shows step-by-step.
   let steps = [
     STEP("Packaging completed form", "current"),
-    STEP(`Dispatching to ${designation}`),
+    STEP(`Emailing adviser copy to ${adviserName}`),
+    STEP(`Submitting to ${designation}`),
     STEP("Awaiting confirmation"),
   ];
   setProc(clientId, "Packaging completed form…", steps);
   dispatch({ type: "UPDATE_FORM_STATUS", clientId, formId, status: "dispatched" });
   await wait(TIMINGS.package);
-  steps = advance(steps, "Packaging completed form", `Dispatching to ${designation}`);
-  setProc(clientId, `Dispatching to ${designation}…`, steps);
+
+  steps = advance(steps, "Packaging completed form", `Emailing adviser copy to ${adviserName}`);
+  setProc(clientId, `Emailing adviser copy to ${adviserName}…`, steps);
+  await wait(500);
+
+  steps = advance(steps, `Emailing adviser copy to ${adviserName}`, `Submitting to ${designation}`);
+  setProc(clientId, `Submitting to ${designation} via secure channel…`, steps);
   await wait(TIMINGS.dispatch);
-  steps = advance(steps, `Dispatching to ${designation}`, "Awaiting confirmation");
+
+  steps = advance(steps, `Submitting to ${designation}`, "Awaiting confirmation");
   setProc(clientId, "Awaiting confirmation…", steps);
   await wait(TIMINGS.awaitConfirm);
+
   const refPrefix = designation.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "EWM";
   const confRef = `${refPrefix}-${Math.floor(40000 + Math.random() * 9000)}`;
   dispatch({ type: "UPDATE_FORM_STATUS", clientId, formId, status: "confirmed", note: confRef });
-  dispatch({ type: "ADD_DOCUMENT", clientId, doc: { id: `${formId}_pop_${Date.now()}`, name: `${formDef.short.replace(/\s+/g,"_")}_${client.name.split(" ")[0]}.pdf`, type: "Application (completed)", source: "Othello", added: "just now", expiry: null } });
-  dispatch({ type: "ADD_ACTIVITY", clientId, entry: { actor: "R. Lee", desc: `Approved & dispatched ${formDef.short} to ${designation}` } });
-  dispatch({ type: "ADD_ACTIVITY", clientId, entry: { actor: "System", desc: `Confirmation received from ${designation} · ref ${confRef} · filed` } });
+
+  // First activity entry — the approval action itself.
+  dispatch({ type: "ADD_ACTIVITY", clientId, entry: { actor: "Rachel Lee", desc: `Approved & dispatched ${formDef.short}` } });
+
+  steps = updateSteps(steps, "Awaiting confirmation", "done");
+
+  // ----------------------------------------------------------------
+  // Phase 2 — distribution fan-out. Visible record of where the form
+  // goes after it's populated: adviser inbox, platform investor-services,
+  // record-keeping vault, and the audit trail.
+  // ----------------------------------------------------------------
+  const filename = `${formDef.short.replace(/\s+/g,"_")}_${client.name.split(" ")[0]}.pdf`;
+  const dateStamp = new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+  const sharepointPath = `/Clients/${client.name}/Forms/${filename}`;
+
+  const dist = [
+    {
+      id: "adviser",
+      icon: "mail",
+      label: "Adviser copy",
+      target: adviserName,
+      activity: `Emailed completed form to adviser ${adviserName}`,
+      toast: `Adviser copy sent to ${adviserName}`,
+      toastKind: "ready",
+      state: "pending",
+    },
+    {
+      id: "platform",
+      icon: "send",
+      label: `Platform submission · ${designation}`,
+      target: `ref ${confRef}`,
+      activity: `Submitted to ${designation} via secure channel · ref ${confRef}`,
+      toast: `${designation} confirmed (ref ${confRef})`,
+      toastKind: "ready",
+      state: "pending",
+    },
+    {
+      id: "records",
+      icon: "docs",
+      label: "Filed to record-keeping vault",
+      target: sharepointPath,
+      activity: `Filed to SharePoint ${sharepointPath}`,
+      toast: `Filed to record-keeping vault`,
+      toastKind: "ready",
+      state: "pending",
+    },
+    {
+      id: "audit",
+      icon: "shield-check",
+      label: "Audit trail entry",
+      target: `Rachel Lee · ${dateStamp}`,
+      activity: `Audit entry logged · operator Rachel Lee · ${dateStamp}`,
+      toast: `Audit entry logged`,
+      toastKind: "ready",
+      state: "pending",
+    },
+  ];
+
+  dispatch({ type: "SET_PROC", proc: { clientId, message: "Distributing & recording…", steps, dist: dist.map(d => ({ ...d })) } });
+  await wait(300);
+
+  // Tick through destinations one by one with a small stagger.
+  for (let i = 0; i < dist.length; i++) {
+    // mark active
+    const activeDist = dist.map((d, idx) => ({ ...d, state: idx < i ? "done" : idx === i ? "active" : "pending" }));
+    dispatch({ type: "SET_PROC", proc: { clientId, message: `${dist[i].label}…`, steps, dist: activeDist } });
+    await wait(450);
+
+    // record the activity log entry as the destination completes
+    dispatch({ type: "ADD_ACTIVITY", clientId, entry: { actor: "System", desc: dist[i].activity } });
+
+    // attach the completed PDF when the records step lands, so the
+    // doc appears in the Documents tab at the same beat the user sees
+    // "Filed to record-keeping vault".
+    if (dist[i].id === "records") {
+      dispatch({ type: "ADD_DOCUMENT", clientId, doc: { id: `${formId}_pop_${Date.now()}`, name: filename, type: "Application (completed)", source: "Othello · filed to records", added: "just now", expiry: null } });
+    }
+
+    // toast the destination
+    toast(dist[i].toast, dist[i].toastKind);
+
+    // mark done
+    const doneDist = dist.map((d, idx) => ({ ...d, state: idx <= i ? "done" : "pending" }));
+    dispatch({ type: "SET_PROC", proc: { clientId, message: `${dist[i].label} — done`, steps, dist: doneDist } });
+    await wait(200);
+  }
+
+  // Final settled state — leave the strip in place briefly so the room
+  // can read all four ticks.
+  dispatch({ type: "SET_PROC", proc: { clientId, message: `Distribution complete · ${dist.length} destinations recorded`, steps, dist: dist.map(d => ({ ...d, state: "done" })) } });
+  await wait(900);
 
   // If every form in scope is now terminal (confirmed/dispatched), move the client to Done
   const after = state().clients.find(c => c.id === clientId);
@@ -512,10 +627,6 @@ SCRIPTS.dispatch_form = async ({ dispatch, toast, wait, setProc, state }, opts =
     dispatch({ type: "ADD_ACTIVITY", clientId, entry: { actor: "System", desc: `All forms complete · ${client.name} moved to Done` } });
     dispatch({ type: "SET_FILTER", filter: "done" });
   }
-  steps = updateSteps(steps, "Awaiting confirmation", "done");
-  setProc(clientId, "Confirmation received · filed to client vault · reminder set", steps);
-  await wait(800);
-  toast(`Confirmation received (ref ${confRef}) · filed · reminder set`, "ready");
 
   // Spine chaining: when Fortlake dispatches, auto-dispatch Hub24 too
   // (it travels alongside Fortlake in the spine). Skipped if Hub24 isn't
@@ -586,7 +697,80 @@ SCRIPTS.auto_chase_okafor = async ({ dispatch, toast, wait, setProc }) => {
   setProc("okafor", "Renewal request sent · awaiting client", steps);
   await wait(500);
   dispatch({ type: "ADD_ACTIVITY", clientId: "okafor", entry: { actor: "System", desc: "Renewal request emailed to client via Microsoft 365" } });
+  dispatch({ type: "SET_CLIENT_STATUS", clientId: "okafor", lastActivity: "just now" });
   toast("Renewal request sent · awaiting client", "info");
+};
+
+// ---------------------------------------------------------------
+// Brennan follow-up — operator-triggered second-contact email
+// when the original ID-renewal request has gone unanswered.
+// ---------------------------------------------------------------
+SCRIPTS.send_brennan_followup = async ({ dispatch, toast, wait, setProc }) => {
+  dispatch({ type: "SET_MODULE", module: "clients" });
+  dispatch({ type: "SELECT_CLIENT", id: "brennan" });
+  let steps = [STEP("Drafting follow-up reminder", "current"), STEP("Sending via Microsoft 365")];
+  setProc("brennan", "Drafting follow-up reminder…", steps);
+  await wait(TIMINGS.draftChase);
+  steps = advance(steps, "Drafting follow-up reminder", "Sending via Microsoft 365");
+  setProc("brennan", "Sending via Microsoft 365…", steps);
+  await wait(TIMINGS.send);
+  steps = updateSteps(steps, "Sending via Microsoft 365", "done");
+  setProc("brennan", "Follow-up reminder sent · awaiting client", steps);
+  await wait(500);
+  dispatch({ type: "ADD_ACTIVITY", clientId: "brennan", entry: { actor: "Rachel Lee", desc: "Follow-up reminder emailed to A. Brennan · 2nd contact" } });
+  dispatch({ type: "SET_CLIENT_STATUS", clientId: "brennan", lastActivity: "just now" });
+  toast("Follow-up reminder sent to A. Brennan", "ready");
+};
+
+// ---------------------------------------------------------------
+// Nguyen risk-ack — operator emails the risk-acknowledgement form
+// for client signature. Field doesn't flip yet; the signed copy
+// arrives separately (out of scope for this beat).
+// ---------------------------------------------------------------
+SCRIPTS.send_nguyen_risk_ack = async ({ dispatch, toast, wait, setProc }) => {
+  dispatch({ type: "SET_MODULE", module: "clients" });
+  dispatch({ type: "SELECT_CLIENT", id: "nguyen" });
+  let steps = [STEP("Drafting risk-acknowledgement form", "current"), STEP("Sending via DocuSign")];
+  setProc("nguyen", "Drafting risk-acknowledgement form…", steps);
+  await wait(TIMINGS.draftChase);
+  steps = advance(steps, "Drafting risk-acknowledgement form", "Sending via DocuSign");
+  setProc("nguyen", "Sending via DocuSign…", steps);
+  await wait(TIMINGS.send);
+  steps = updateSteps(steps, "Sending via DocuSign", "done");
+  setProc("nguyen", "Risk-ack form sent · awaiting signature", steps);
+  await wait(500);
+  dispatch({ type: "ADD_ACTIVITY", clientId: "nguyen", entry: { actor: "Rachel Lee", desc: "Risk-acknowledgement form sent to L. Nguyen for signature via DocuSign" } });
+  dispatch({ type: "SET_CLIENT_STATUS", clientId: "nguyen", lastActivity: "just now" });
+  toast("Risk-ack form sent · awaiting client signature", "ready");
+};
+
+// ---------------------------------------------------------------
+// Nguyen bank fast-path — confirm all four review-state bank fields
+// in one go. Mirrors Smith's resolve_exceptions in shape.
+// ---------------------------------------------------------------
+SCRIPTS.confirm_nguyen_bank = async ({ dispatch, toast, wait, setProc, state }) => {
+  dispatch({ type: "SELECT_CLIENT", id: "nguyen" });
+  let steps = [STEP("Recording your decisions", "current"), STEP("Re-validating")];
+  setProc("nguyen", "Recording your decisions…", steps);
+  await wait(600);
+  steps = advance(steps, "Recording your decisions", "Re-validating");
+  setProc("nguyen", "Re-validating…", steps);
+  await wait(600);
+  const nguyen = state().clients.find(c => c.id === "nguyen");
+  const updates = {};
+  for (const k of ["bank.institution","bank.bsb","bank.account_no","bank.account_name"]) {
+    const cur = nguyen?.fields?.[k];
+    if (cur && cur.status === "review") {
+      updates[k] = { value: cur.value, status: "verified", source: "Confirmed by Rachel Lee" };
+    }
+  }
+  dispatch({ type: "UPDATE_CLIENT_FIELDS", clientId: "nguyen", updates });
+  dispatch({ type: "ADD_ACTIVITY", clientId: "nguyen", entry: { actor: "Rachel Lee", desc: `Confirmed ${Object.keys(updates).length} extracted bank fields · all verified` } });
+  dispatch({ type: "SET_CLIENT_STATUS", clientId: "nguyen", lastActivity: "just now" });
+  steps = updateSteps(steps, "Re-validating", "done");
+  setProc("nguyen", `${Object.keys(updates).length} bank fields verified`, steps);
+  await wait(500);
+  toast("Bank fields verified", "ready");
 };
 
 // ---------------------------------------------------------------
@@ -667,7 +851,7 @@ SCRIPTS.resolve_wholesale_fields = async ({ dispatch, toast, wait, setProc, stat
   steps = updateSteps(steps, "Validating accountant against ASIC register", "done");
   setProc(cid, "Wholesale certificate filed · expires 27 May 2028", steps);
   await wait(400);
-  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "R. Lee", desc: "Uploaded wholesale certificate · accountant ASIC-verified · expires 27 May 2028" } });
+  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "Rachel Lee", desc: "Uploaded wholesale certificate · accountant ASIC-verified · expires 27 May 2028" } });
   toast("Wholesale certificate captured · 2 fields resolved", "ready");
 };
 
@@ -701,7 +885,7 @@ SCRIPTS.add_fatca_form = async ({ dispatch, toast, wait, setProc, state }) => {
   const cid = state().selectedClientId || "smith";
   dispatch({ type: "SELECT_CLIENT", id: cid });
   dispatch({ type: "ADD_FORM_TO_CLIENT", clientId: cid, formId: "fatca_crs", status: "awaiting" });
-  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "R. Lee", desc: "Added FATCA / CRS Self-Certification to required forms" } });
+  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "Rachel Lee", desc: "Added FATCA / CRS Self-Certification to required forms" } });
   toast("FATCA / CRS added · 2 fields outstanding", "attention");
   // brief banner so the user sees it land
   setProc(cid, "Updating checklist · 2 new fields required for FATCA / CRS", []);
@@ -712,7 +896,7 @@ SCRIPTS.add_wholesale_form = async ({ dispatch, toast, wait, setProc, state }) =
   const cid = state().selectedClientId || "smith";
   dispatch({ type: "SELECT_CLIENT", id: cid });
   dispatch({ type: "ADD_FORM_TO_CLIENT", clientId: cid, formId: "wholesale_cert", status: "awaiting" });
-  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "R. Lee", desc: "Added Wholesale / Sophisticated Investor Certificate to required forms" } });
+  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "Rachel Lee", desc: "Added Wholesale / Sophisticated Investor Certificate to required forms" } });
   toast("Wholesale Certificate added · 2 fields outstanding", "attention");
   setProc(cid, "Updating checklist · 2 new fields required", []);
   await wait(800);
@@ -722,7 +906,7 @@ SCRIPTS.add_dd_form = async ({ dispatch, toast, wait, setProc, state }) => {
   const cid = state().selectedClientId || "smith";
   dispatch({ type: "SELECT_CLIENT", id: cid });
   dispatch({ type: "ADD_FORM_TO_CLIENT", clientId: cid, formId: "ewm_direct_debit", status: "awaiting" });
-  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "R. Lee", desc: "Added EWM Direct Debit Request to required forms" } });
+  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "Rachel Lee", desc: "Added EWM Direct Debit Request to required forms" } });
   toast("Direct Debit Request added · 1 field outstanding", "attention");
   setProc(cid, "Updating checklist · 1 new field required", []);
   await wait(800);

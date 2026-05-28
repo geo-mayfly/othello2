@@ -5,8 +5,8 @@
 function ClientFileTabs({ client, fieldsFlash, formsFlash }) {
   const [tab, setTab] = useState("checklist");
   const [checklistMode, setChecklistMode] = useState("perform");
-  const isHero = client.id === "smith";
 
+  const fieldsCount = Object.keys(client.fields || {}).length;
   const docsCount = client.documents?.length || 0;
   const formsCount = client.forms?.length || 0;
   const activityCount = client.activity?.length || 0;
@@ -15,7 +15,7 @@ function ClientFileTabs({ client, fieldsFlash, formsFlash }) {
     <div className="cf-section">
       <div className="tabs">
         <button className={`tab ${tab === "checklist" ? "active" : ""}`} onClick={() => setTab("checklist")}>
-          Checklist {isHero && <span className="tab-count">{Object.keys(client.fields || {}).length}</span>}
+          Checklist {fieldsCount > 0 && <span className="tab-count">{fieldsCount}</span>}
         </button>
         <button className={`tab ${tab === "forms" ? "active" : ""}`} onClick={() => setTab("forms")}>
           Forms <span className="tab-count">{formsCount}</span>
@@ -27,7 +27,7 @@ function ClientFileTabs({ client, fieldsFlash, formsFlash }) {
           Activity <span className="tab-count">{activityCount}</span>
         </button>
         <div style={{ flex: 1 }} />
-        {tab === "checklist" && isHero && (
+        {tab === "checklist" && fieldsCount > 0 && (
           <div className="seg" style={{ marginBottom: 4 }}>
             <button className={checklistMode === "perform" ? "on" : ""} onClick={() => setChecklistMode("perform")}>Per form</button>
             <button className={checklistMode === "perclient" ? "on" : ""} onClick={() => setChecklistMode("perclient")}>Per client</button>
@@ -35,24 +35,10 @@ function ClientFileTabs({ client, fieldsFlash, formsFlash }) {
         )}
       </div>
 
-      {tab === "checklist" && isHero && <Checklist client={client} mode={checklistMode} flash={fieldsFlash} />}
-      {tab === "checklist" && !isHero && <NotInteractiveNotice client={client} />}
+      {tab === "checklist" && <Checklist client={client} mode={checklistMode} flash={fieldsFlash} />}
       {tab === "forms" && <FormsList client={client} flash={formsFlash} />}
       {tab === "docs" && <DocumentsList client={client} />}
       {tab === "activity" && <ActivityList client={client} />}
-    </div>
-  );
-}
-
-function NotInteractiveNotice({ client }) {
-  return (
-    <div className="empty-state">
-      <Icon name="people" size={24} />
-      <div className="t-secondary" style={{ maxWidth: 360 }}>
-        Detailed checklist not seeded for {client.name} in this demo.
-        Switch to the <strong style={{ color: "var(--text-primary)" }}>Smith Family Trust</strong> for the full walkthrough,
-        or use this row for the reverse beat / status story.
-      </div>
     </div>
   );
 }
@@ -145,16 +131,16 @@ function FieldRow({ fieldKey, field, expanded, onToggle, flashed }) {
         onClick={onToggle}
       >
         <div className="fr-label">
-          <Icon name="chevron-right" size={11} className="caret" />
-          {def.label}
-          {def.aml && <span className="pill" style={{ fontSize: 10, padding: "1px 6px" }}>AML</span>}
+          <Icon name="chevron-right" size={12} className="caret" />
+          <span>{def.label}</span>
+          {def.aml && <span className="fr-aml-tag">AML</span>}
         </div>
         <span className={`fr-status pill ${sk}`}>
           <StatusGlyph status={field.status} />
           {statusLabel(field.status)}
         </span>
         <span className="fr-value">{field.value}</span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{def.source || "—"}</span>
+        <span className="fr-prov-text">{def.source || "—"}</span>
       </div>
       {expanded && (
         <div className="field-detail">
@@ -216,7 +202,7 @@ function FormsList({ client, flash }) {
                   className="form-picker-item"
                   onClick={() => {
                     dispatch({ type: "ADD_FORM_TO_CLIENT", clientId: client.id, formId: f.id });
-                    dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "R. Lee", desc: `Added ${f.short} to this client's required forms` } });
+                    dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "Rachel Lee", desc: `Added ${f.short} to this client's required forms` } });
                     setPickerOpen(false);
                   }}
                 >
@@ -274,11 +260,11 @@ function FormCardAction({ client, form, dispatch, runEvent }) {
       <div style={{ display: "flex", gap: 6 }}>
         <button className="btn btn-ghost" onClick={() => {
           dispatch({ type: "REMOVE_FORM_FROM_CLIENT", clientId: client.id, formId: form.formId });
-          dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "R. Lee", desc: `Dismissed ${FORMS[form.formId].short} — not required` } });
+          dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "Rachel Lee", desc: `Dismissed ${FORMS[form.formId].short} — not required` } });
         }}>Dismiss</button>
         <button className="btn btn-primary" onClick={() => {
           dispatch({ type: "UPDATE_FORM_STATUS", clientId: client.id, formId: form.formId, status: "awaiting" });
-          dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "R. Lee", desc: `Confirmed ${FORMS[form.formId].short} is required for this client` } });
+          dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "Rachel Lee", desc: `Confirmed ${FORMS[form.formId].short} is required for this client` } });
         }}>Confirm</button>
       </div>
     );

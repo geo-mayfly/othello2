@@ -74,6 +74,8 @@ const FLOWS = [
         ok:   (s) => stepDone(s, "confirm_forms"),
       },
       { id: "resolve_exceptions",    label: "Resolve flagged items",             desc: "Operator confirms account no., corrects TFN, picks address",
+        interactive: true,
+        interactiveHint: "In the Outstanding panel above, click the amber 'Resolve flagged items' button.",
         done: (s) => {
           const c = s.clients.find(c => c.id === "smith");
           return c?.fields["investor.tfn"]?.status === "verified" && c?.fields["investment.risk_ack"]?.status === "verified";
@@ -114,7 +116,7 @@ const FLOWS = [
   {
     id: "okafor_reverse_beat",
     title: "Compliance reverse beat",
-    subtitle: "Okafor — wholesale certificate expires, chase, renew",
+    subtitle: "Okafor — wholesale certificate expires today; without auto-chase, advice silently halts. Othello drafts the renewal, sends, and clears the flag.",
     badge: "liability story",
     steps: [
       { id: "expire_okafor",            label: "Wholesale certificate expires",  desc: "Dependent form un-completes; client back to Needs you",
@@ -226,7 +228,7 @@ function DemoPanel() {
       <button className="demo-tab" onClick={() => setOpen(true)}>
         <span className="demo-badge">DEMO</span>
         Controls
-        <Icon name="chevron-right" size={14} />
+        <Icon name="chevron-up" size={14} />
       </button>
     );
   }
