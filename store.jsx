@@ -37,6 +37,7 @@ const initialState = () => ({
   overviewMetrics: deepClone(OVERVIEW_METRICS),
   formsLibrary: deepClone(FORMS),
   previewForm: null,           // { clientId, formId } when populated-form preview open
+  resolveOpen: null,           // { clientId } when resolve-flagged-items slideover open
   fieldMapSlideoverId: null,   // forms-library slide-over
   fieldsFlash: {},             // {clientId: {fieldKey: timestamp}} for cross-fade animation
   formsFlash: {},              // {clientId: {formId: timestamp}}
@@ -183,6 +184,11 @@ function reducer(state, action) {
       const clients = state.clients.map(c => c.id === clientId ? { ...c, onboardingTo: { ...(c.onboardingTo || {}), ...onboardingTo } } : c);
       return { ...state, clients };
     }
+
+    case "OPEN_RESOLVE":
+      return { ...state, resolveOpen: { clientId: action.clientId } };
+    case "CLOSE_RESOLVE":
+      return { ...state, resolveOpen: null };
 
     case "OPEN_PREVIEW":
       return { ...state, previewForm: { clientId: action.clientId, formId: action.formId } };

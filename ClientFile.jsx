@@ -544,15 +544,15 @@ function OutstandingSection({ client, runEvent }) {
         <div className="action-row" style={{ alignItems: "center", background: "var(--attention-soft)", borderColor: "transparent" }}>
           <span className="action-sev attention"><StatusGlyph status="review" size={14} /></span>
           <div className="action-body">
-            <div className="action-title">{flaggedKeys.length} flagged item{flaggedKeys.length === 1 ? "" : "s"} awaiting your decision</div>
-            <div className="action-why">Low-confidence extractions, validation failures and source conflicts — confirm to clear them in one pass.</div>
+            <div className="action-title">{flaggedKeys.length} flagged item{flaggedKeys.length === 1 ? "" : "s"} awaiting your review</div>
+            <div className="action-why">Low-confidence extractions, validation failures and source conflicts. Open the review panel to inspect each one and approve, correct or pick the authoritative source.</div>
           </div>
           <button
             className="btn btn-primary"
-            onClick={() => runEvent("resolve_exceptions")}
+            onClick={() => dispatch({ type: "OPEN_RESOLVE", clientId: client.id })}
             style={{ alignSelf: "center" }}
           >
-            Resolve flagged items <Icon name="arrow-right" size={14} />
+            Review &amp; resolve <Icon name="arrow-right" size={14} />
           </button>
         </div>
       )}
@@ -594,5 +594,311 @@ function OutcomeCredit({ client }) {
   );
 }
 
+// ---------------------------------------------------------------
+// Resolve flagged items — review slideover.
+// One card per field that's in review / failed / conflict status.
+// Each card shows the actual data, the reason it was flagged, and an
+// operator decision (confirm / accept correction / pick source /
+// attest). Verifying a field dispatches UPDATE_CLIENT_FIELDS for that
+// specific key plus an ADD_ACTIVITY entry, so the operator's decision
+// is recorded in the audit log. Slideover auto-closes when no flagged
+// items remain.
+// ---------------------------------------------------------------
+function ResolveSlideover() {
+  const { state, dispatch, runEvent } = useStore();
+  const open = state.resolveOpen;
+  if (!open) return null;
+  const client = state.clients.find(c => c.id === open.clientId);
+  if (!client) return null;
+
+  const f = client.fields || {};
+  const close = () => dispatch({ type: "CLOSE_RESOLVE" });
+
+  // Each card descriptor describes one resolution. `done` is true once the
+  // underlying field has been verified — when every card is done the
+  // slideover auto-closes.
+  const cards = [
+    {
+      id: "bank.account_no",
+      title: "Account number — low confidence",
+      kind: "review",
+      done: f["bank.account_no"]?.status === "verified",
+      render: () => (
+        <ResolveAccountNo client={client} field={f["bank.account_no"]} dispatch={dispatch} />
+      ),
+    },
+    {
+      id: "investor.tfn",
+      title: "TFN checksum failed",
+      kind: "failed",
+      done: f["investor.tfn"]?.status === "verified",
+      render: () => (
+        <ResolveTFN client={client} field={f["investor.tfn"]} dispatch={dispatch} />
+      ),
+    },
+    {
+      id: "investor.residential_address",
+      title: "Residential address — sources disagree",
+      kind: "conflict",
+      done: f["investor.residential_address"]?.status === "verified",
+      render: () => (
+        <ResolveAddress client={client} field={f["investor.residential_address"]} dispatch={dispatch} />
+      ),
+    },
+    {
+      id: "investment.risk_ack",
+      title: "Risk acknowledgement — not yet recorded",
+      kind: "missing",
+      done: f["investment.risk_ack"]?.status === "verified",
+      render: () => (
+        <ResolveRiskAck client={client} field={f["investment.risk_ack"]} dispatch={dispatch} />
+      ),
+    },
+  ];
+
+  const pending = cards.filter(c => !c.done);
+  const resolvedCount = cards.length - pending.length;
+
+  // Auto-close once everything's resolved (give the operator 700ms to see
+  // the final tick before the panel disappears).
+  if (pending.length === 0) {
+    setTimeout(() => dispatch({ type: "CLOSE_RESOLVE" }), 700);
+  }
+
+  return (
+    <div className="resolve-backdrop" onClick={close}>
+      <div className="resolve-shell" onClick={(e) => e.stopPropagation()}>
+        <div className="resolve-head">
+          <div>
+            <div className="resolve-title">Review flagged items</div>
+            <div className="resolve-sub">
+              {pending.length === 0
+                ? "All flagged items resolved"
+                : `${pending.length} of ${cards.length} awaiting your decision`}
+              {resolvedCount > 0 && pending.length > 0 && (
+                <> · {resolvedCount} resolved</>
+              )}
+            </div>
+          </div>
+          <button className="btn btn-ghost btn-icon" onClick={close} title="Close"><Icon name="x" size={14} /></button>
+        </div>
+
+        <div className="resolve-body">
+          {cards.map((c) => (
+            <div key={c.id} className={`resolve-card ${c.kind} ${c.done ? "done" : ""}`}>
+              <div className="resolve-card-head">
+                <span className={`resolve-card-mark ${c.done ? "done" : c.kind}`}>
+                  {c.done ? <Icon name="check" size={12} /> : (c.kind === "failed" ? <Icon name="warning" size={11} /> : <span className="ap-dot" />)}
+                </span>
+                <div className="resolve-card-title">{c.title}</div>
+                {c.done && <span className="pill ready" style={{ fontSize: 10.5, padding: "1px 7px" }}>Resolved</span>}
+              </div>
+              {!c.done && (
+                <div className="resolve-card-body">
+                  {c.render()}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="resolve-foot">
+          {pending.length > 0 ? (
+            <>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  // Fast path — fire the existing script for demo speed.
+                  // The slideover will auto-close as fields flip verified.
+                  runEvent("resolve_exceptions");
+                }}
+              >
+                Resolve all (accept suggestions)
+              </button>
+              <span className="t-muted" style={{ fontSize: 11.5 }}>Or work through each card individually.</span>
+            </>
+          ) : (
+            <span className="t-muted" style={{ fontSize: 12 }}>Closing…</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Individual resolution cards ----
+
+function ResolveAccountNo({ client, field, dispatch }) {
+  const value = field?.value || "•••• 8412";
+  const confidence = field?.confidence != null
+    ? `${Math.round(field.confidence * 100)}%`
+    : "62%";
+  const onConfirm = () => {
+    dispatch({
+      type: "UPDATE_CLIENT_FIELDS",
+      clientId: client.id,
+      updates: { "bank.account_no": { value, status: "verified", source: "Confirmed by Rachel Lee" } },
+    });
+    dispatch({
+      type: "ADD_ACTIVITY",
+      clientId: client.id,
+      entry: { actor: "Rachel Lee", desc: `Confirmed account number ${value}` },
+    });
+  };
+  return (
+    <>
+      <div className="resolve-why">Low-confidence OCR extraction. Confidence below the 80% auto-verify threshold.</div>
+      <div className="resolve-evidence">
+        <div className="resolve-evidence-head">Source · CBA_Statement_May.pdf</div>
+        <div className="resolve-evidence-snip">
+          <span className="t-muted">…Statement period 01–30 Apr 2026…</span>
+          <br />Account name: <strong>John A. Smith</strong>
+          <br />BSB: 063-019 &nbsp; Account: <mark>{value}</mark>
+          <br /><span className="t-muted">Confidence on account digits: {confidence}</span>
+        </div>
+      </div>
+      <div className="resolve-actions">
+        <button className="btn btn-primary" onClick={onConfirm}>Confirm {value}</button>
+        <button className="btn btn-secondary" disabled title="Request re-extract from source">Reject &amp; re-extract</button>
+      </div>
+    </>
+  );
+}
+
+function ResolveTFN({ client, field, dispatch }) {
+  const captured = field?.value || "623 ••• 451";
+  const suggested = "623 ••• 458";
+  const [showInput, setShowInput] = useState(false);
+  const [manualVal, setManualVal] = useState(suggested);
+
+  const apply = (val, sourceLabel) => {
+    dispatch({
+      type: "UPDATE_CLIENT_FIELDS",
+      clientId: client.id,
+      updates: { "investor.tfn": { value: val, status: "verified", source: sourceLabel } },
+    });
+    dispatch({
+      type: "ADD_ACTIVITY",
+      clientId: client.id,
+      entry: { actor: "Rachel Lee", desc: `Corrected TFN · checksum OK (${val})` },
+    });
+  };
+
+  return (
+    <>
+      <div className="resolve-why">Modulus-11 checksum doesn't match — last digit is off by 1.</div>
+      <div className="resolve-evidence">
+        <div className="resolve-evidence-head">Captured value</div>
+        <div className="resolve-evidence-snip">
+          <span style={{ fontFamily: "var(--font-mono)" }}>{captured}</span>
+          <span className="resolve-tag failed">checksum failed</span>
+        </div>
+        <div className="resolve-evidence-head" style={{ marginTop: 10 }}>Clarifying email reply · client · 6m ago</div>
+        <div className="resolve-evidence-snip">
+          <span className="t-muted">"Sorry about the typo — correct TFN is "</span><strong>{suggested}</strong>
+          <span className="resolve-tag ready">checksum OK</span>
+        </div>
+      </div>
+      <div className="resolve-actions">
+        <button className="btn btn-primary" onClick={() => apply(suggested, "Corrected by Rachel Lee · client email reply · checksum OK")}>
+          Accept correction {suggested}
+        </button>
+        <button className="btn btn-secondary" onClick={() => setShowInput(s => !s)}>
+          {showInput ? "Hide manual entry" : "Enter manually"}
+        </button>
+      </div>
+      {showInput && (
+        <div className="resolve-manual">
+          <label className="resolve-manual-label">Enter the correct TFN</label>
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <input
+              className="resolve-input"
+              value={manualVal}
+              onChange={(e) => setManualVal(e.target.value)}
+              placeholder="9 digits"
+            />
+            <button className="btn btn-secondary" onClick={() => apply(manualVal, "Manually entered by Rachel Lee · checksum OK")}>Save</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function ResolveAddress({ client, field, dispatch }) {
+  const dynVal = field?.conflict?.dynamics || "Unit 4, 42 Linden St, Carlton VIC 3053";
+  const idVal  = field?.conflict?.id       || "42 Linden St, Carlton VIC 3053";
+
+  const pick = (val, sourceLabel) => {
+    dispatch({
+      type: "UPDATE_CLIENT_FIELDS",
+      clientId: client.id,
+      updates: { "investor.residential_address": { value: val, status: "verified", source: sourceLabel } },
+    });
+    dispatch({
+      type: "ADD_ACTIVITY",
+      clientId: client.id,
+      entry: { actor: "Rachel Lee", desc: `Address resolved · ${sourceLabel}` },
+    });
+  };
+
+  return (
+    <>
+      <div className="resolve-why">Two sources disagree. Pick the one to use on the form — Dynamics has a unit number that the OCR'd ID didn't capture.</div>
+      <div className="resolve-conflict">
+        <div className="resolve-conflict-card">
+          <div className="resolve-conflict-head">Dynamics CRM</div>
+          <div className="resolve-conflict-val">{dynVal}</div>
+          <div className="resolve-conflict-meta">Updated 14 May 2026 · Adviser Catherine Halford</div>
+          <button className="btn btn-primary" onClick={() => pick(dynVal, "Dynamics chosen by Rachel Lee")}>Use this value</button>
+        </div>
+        <div className="resolve-conflict-card">
+          <div className="resolve-conflict-head">Photo ID OCR</div>
+          <div className="resolve-conflict-val">{idVal}</div>
+          <div className="resolve-conflict-meta">Extracted just now · DVS-matched</div>
+          <button className="btn btn-secondary" onClick={() => pick(idVal, "Photo ID chosen by Rachel Lee")}>Use this value</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ResolveRiskAck({ client, field, dispatch }) {
+  const onAttest = () => {
+    dispatch({
+      type: "UPDATE_CLIENT_FIELDS",
+      clientId: client.id,
+      updates: { "investment.risk_ack": { value: "Acknowledged", status: "verified", source: "Client signature · 27 May 2026" } },
+    });
+    dispatch({
+      type: "ADD_ACTIVITY",
+      clientId: client.id,
+      entry: { actor: "Rachel Lee", desc: "Risk acknowledgement recorded · signed copy on file" },
+    });
+  };
+
+  return (
+    <>
+      <div className="resolve-why">
+        Client must acknowledge fund risk before the form can be lodged. A signed risk-acknowledgement form was received via email on 27 May 2026 and is filed in the document vault.
+      </div>
+      <div className="resolve-evidence">
+        <div className="resolve-evidence-head">Attached evidence</div>
+        <div className="resolve-evidence-snip">
+          <Icon name="doc" size={11} style={{ verticalAlign: "middle", marginRight: 6 }} />
+          Risk_Ack_J_Smith_Signed.pdf
+          <span className="t-muted" style={{ marginLeft: 8 }}>Received 27 May 2026 · 1 page · signed by John A. Smith</span>
+        </div>
+      </div>
+      <div className="resolve-actions">
+        <button className="btn btn-primary" onClick={onAttest}>
+          <Icon name="check" size={12} /> Confirm signature on file
+        </button>
+      </div>
+    </>
+  );
+}
+
 window.ClientFile = ClientFile;
+window.ResolveSlideover = ResolveSlideover;
 window.buildOutstandingActions = buildOutstandingActions;
