@@ -33,8 +33,11 @@ const FIELD_DEFS = {
   "entity.type":                  { label: "Entity type",          category: "Entity",   aml: true,  type: "enum",                   source: "CRM",             note: "Individual, Joint, Trust, Company, SMSF." },
   "entity.name":                  { label: "Entity name",          category: "Entity",   aml: true,  type: "text",                   source: "Trust deed",      note: "Legal name as it appears on the constitutive document." },
   "entity.abn":                   { label: "ABN",                  category: "Entity",   aml: false, type: "11-digit; ABR lookup",   source: "Trust deed / ABR",note: "11-digit Australian Business Number." },
+  "entity.tfn":                   { label: "Entity TFN",           category: "Entity",   aml: false, type: "9-digit; ATO checksum",  source: "Trust deed / company secretary", note: "9-digit Tax File Number issued to the trust, SMSF or company." },
   "entity.trustee":               { label: "Trustee",              category: "Entity",   aml: true,  type: "text",                   source: "Trust deed",      note: "Named trustee(s) as listed in the deed." },
   "entity.trust_date":            { label: "Date trust established",category: "Entity",  aml: true,  type: "date",                   source: "Trust deed",      note: "From the constitutive document." },
+
+  "investor.title":               { label: "Title",                category: "Identity", aml: false, type: "enum",                   source: "CRM",             note: "Mr / Mrs / Miss / Ms / Dr." },
 
   "bank.institution":             { label: "Financial institution",category: "Banking",  aml: false, type: "text",                   source: "Bank statement",  note: "Bank/ADI name from a statement header." },
   "bank.bsb":                     { label: "BSB",                  category: "Banking",  aml: false, type: "6-digit; BSB lookup",    source: "Bank statement",  note: "6-digit BSB; validate against the BSB register." },
@@ -172,6 +175,7 @@ const FORMS = {
 // ---------------------------------------------------------------
 const SMITH_INITIAL_FIELDS = {
   "investor.given_names":          { value: "—", status: "missing", source: "—" },
+  "investor.title":              { value: "—", status: "missing", source: "—" },
   "investor.surname":              { value: "—", status: "missing", source: "—" },
   "investor.dob":                  { value: "—", status: "missing", source: "—" },
   "investor.occupation":           { value: "—", status: "missing", source: "—" },
@@ -188,6 +192,7 @@ const SMITH_INITIAL_FIELDS = {
   "entity.type":                   { value: "—", status: "missing", source: "—" },
   "entity.name":                   { value: "—", status: "missing", source: "—" },
   "entity.abn":                    { value: "—", status: "missing", source: "—" },
+  "entity.tfn":                   { value: "—", status: "missing", source: "—" },
   "entity.trustee":                { value: "—", status: "missing", source: "—" },
   "entity.trust_date":             { value: "—", status: "missing", source: "—" },
 
@@ -256,6 +261,8 @@ const SEED_CLIENTS = [
     lastActivity: "12m ago",
     fields: {
       "investor.given_names":          { value: "Linh Tuan", status: "verified", source: "DVS \u00b7 26/05/2026" },
+      "investor.title":              { value: "Mr",  status: "verified", source: "Dynamics" },
+      "entity.tfn":                    { value: "692 318 047", status: "verified", source: "Trust deed · ATO checksum OK" },
       "investor.surname":              { value: "Nguyen", status: "verified", source: "DVS \u00b7 26/05/2026" },
       "investor.dob":                  { value: "23/03/1965", status: "verified", source: "DVS \u00b7 26/05/2026" },
       "investor.occupation":           { value: "Engineering Manager", status: "verified", source: "Dynamics" },
@@ -379,6 +386,7 @@ const SEED_CLIENTS = [
     lastActivity: "3h ago",
     fields: {
       "investor.given_names":          { value: "David Olusegun", status: "verified", source: "DVS \u00b7 23/05/2024" },
+      "investor.title":              { value: "Mr",  status: "verified", source: "Dynamics" },
       "investor.surname":              { value: "Okafor", status: "verified", source: "DVS \u00b7 23/05/2024" },
       "investor.dob":                  { value: "11/04/1976", status: "verified", source: "DVS \u00b7 23/05/2024" },
       "investor.occupation":           { value: "Investment Banker, MD", status: "verified", source: "Dynamics" },
@@ -487,6 +495,8 @@ const SEED_CLIENTS = [
     lastActivity: "1d ago",
     fields: {
       "investor.given_names":          { value: "Aoife Marie", status: "verified", source: "DVS \u00b7 12/06/2024" },
+      "investor.title":              { value: "Ms",  status: "verified", source: "Dynamics" },
+      "entity.tfn":                    { value: "528 471 902", status: "verified", source: "Trust deed · ATO checksum OK" },
       "investor.surname":              { value: "Brennan", status: "verified", source: "DVS \u00b7 12/06/2024" },
       "investor.dob":                  { value: "17/05/1979", status: "verified", source: "DVS \u00b7 12/06/2024" },
       "investor.occupation":           { value: "Solicitor", status: "verified", source: "Dynamics" },
@@ -604,6 +614,7 @@ const SEED_CLIENTS = [
     lastActivity: "8d ago",
     fields: {
       "investor.given_names":          { value: "Eleanor Marie", status: "verified", source: "DVS \u00b7 19/05/2026" },
+      "investor.title":              { value: "Ms",  status: "verified", source: "Dynamics" },
       "investor.surname":              { value: "Whitlam", status: "verified", source: "DVS \u00b7 19/05/2026" },
       "investor.dob":                  { value: "12/09/1968", status: "verified", source: "DVS \u00b7 19/05/2026" },
       "investor.occupation":           { value: "Retired", status: "verified", source: "Dynamics" },
@@ -737,6 +748,8 @@ const SEED_CLIENTS = [
     lastActivity: "14d ago",
     fields: {
       "investor.given_names":          { value: "Anthony Joseph", status: "verified", source: "DVS \u00b7 12/05/2026" },
+      "investor.title":              { value: "Mr",  status: "verified", source: "Dynamics" },
+      "entity.tfn":                    { value: "841 226 503", status: "verified", source: "Company secretary · ATO checksum OK" },
       "investor.surname":              { value: "Costa", status: "verified", source: "DVS \u00b7 12/05/2026" },
       "investor.dob":                  { value: "04/07/1958", status: "verified", source: "DVS \u00b7 12/05/2026" },
       "investor.occupation":           { value: "Company director", status: "verified", source: "Dynamics" },

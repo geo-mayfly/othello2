@@ -97,6 +97,22 @@ function FortlakePreview() {
 // two-column joint investor layout, risk table and fund allocation
 // table all match the source PDF.
 // ---------------------------------------------------------------
+// Joint investor lookup — keyed on client.id. Only Smith and Nguyen have a
+// second natural-person trustee in the demo; everyone else is solo.
+// `address` is intentionally omitted — we reuse the primary investor's
+// residential address (joint trustees share a household in the demo).
+const JOINT_INVESTOR = {
+  smith:  { title: "Mrs", given: "Margaret Louise", surname: "Smith",  dob: "22/09/1974", gender: "Female", occupation: "Company secretary",         tfn: "419 ••• 207", foreignTax: "No", email: "m.smith@familytrust.example" },
+  nguyen: { title: "Ms",  given: "Mai",             surname: "Nguyen", dob: "08/12/1968", gender: "Female", occupation: "Secondary school principal", tfn: "327 ••• 814", foreignTax: "No", email: "m.nguyen@nguyensuper.example" },
+};
+
+// Per-entity primary-business label for Section 2.
+const PRIMARY_ACTIVITY = {
+  Trust:   "Family investment trust",
+  SMSF:    "Self-managed superannuation fund",
+  Company: "Holding company — investment",
+};
+
 function FortlakePaper({ client, highlightKey }) {
   const f = client.fields;
   const F = (key) => f[key]?.value ?? "";
@@ -105,19 +121,16 @@ function FortlakePaper({ client, highlightKey }) {
   const boxCls = (key) => `fp-box ${isReview(key) ? "flagged" : ""} ${isFailed(key) ? "failed" : ""} ${highlightKey === key ? "target" : ""}`;
   const dk = (key) => ({ "data-pf-key": key });
 
-  // Joint trustee — Margaret's details are hardcoded for the demo
-  // (only one set of investor.* fields is tracked in state).
-  const margaret = {
-    title: "Mrs",
-    given: "Margaret Louise",
-    surname: "Smith",
-    dob: "22/09/1974",
-    occupation: "Company secretary",
-    tfn: "419 ••• 207",
-    foreignTax: "No",
-    address: F("investor.residential_address") || "42 Linden St, Carlton VIC 3053",
-    email: "m.smith@familytrust.example",
-  };
+  // Entity-type flags so the layout below renders the right sections.
+  const isTrust   = client.entityType === "Trust";
+  const isSMSF    = client.entityType === "SMSF";
+  const isCompany = client.entityType === "Company";
+  const isNonIndividual = isTrust || isSMSF || isCompany;
+  const investor2 = JOINT_INVESTOR[client.id] || null;
+
+  // Sensible derived values for fields we don't track per-client.
+  const primaryActivity = PRIMARY_ACTIVITY[client.entityType] || "Investment";
+  const mobilePhone = F("investor.phone") || "(03) 9000 0000";
 
   // Helpers: char-box render. Pads to N chars, fills extras with blanks.
   const digits = (val, n) => {
@@ -166,69 +179,104 @@ function FortlakePaper({ client, highlightKey }) {
         {Array.from({ length: 9 }).map((_, i) => <span key={i} className="fp-digit" />)}
       </div>
 
-      <Bar n="2">NON-INDIVIDUAL INVESTORS DETAILS &ndash; COMPANY/TRUSTS/PARTNERSHIP/SUPERANNUATION FUND OR OTHER ENTITY</Bar>
-      <div className="fp-help" style={{ marginBottom: 6 }}>Cross (X) the appropriate box to indicate the type of investor you are:</div>
-      <div className="fp-row" style={{ marginBottom: 8 }}>
-        <Tick>Self Managed Super Fund</Tick>
-        <Tick on>Trust</Tick>
-        <Tick>Company</Tick>
-        <Tick>Partnership</Tick>
-      </div>
-      <div className="fp-label-tight">Other, please specify</div>
-      <div className="fp-box empty" />
-
-      <div className="fp-label-tight" style={{ marginTop: 6 }}>Full name of company/partnership/trustee/other entity*</div>
-      <div className="fp-box empty" />
-
-      <div className="fp-label-tight" style={{ marginTop: 6 }}>Full name of superannuation fund/trust*</div>
-      <div className={boxCls("entity.name")} {...dk("entity.name")}>{F("entity.name")}</div>
-
-      <div className="fp-two-col">
-        <div>
-          <div className="fp-label-tight">Primary business/trust activity*</div>
-          <div className="fp-box">Family investment trust</div>
-        </div>
-        <div>
-          <div className="fp-label-tight">Are you a charity?*</div>
-          <div className="fp-row" style={{ marginTop: 4 }}>
-            <Tick>Yes</Tick>
-            <Tick on>No</Tick>
+      {isNonIndividual ? (
+        <>
+          <Bar n="2">NON-INDIVIDUAL INVESTORS DETAILS &ndash; COMPANY/TRUSTS/PARTNERSHIP/SUPERANNUATION FUND OR OTHER ENTITY</Bar>
+          <div className="fp-help" style={{ marginBottom: 6 }}>Cross (X) the appropriate box to indicate the type of investor you are:</div>
+          <div className="fp-row" style={{ marginBottom: 8 }}>
+            <Tick on={isSMSF}>Self Managed Super Fund</Tick>
+            <Tick on={isTrust}>Trust</Tick>
+            <Tick on={isCompany}>Company</Tick>
+            <Tick>Partnership</Tick>
           </div>
-        </div>
-      </div>
+          <div className="fp-label-tight">Other, please specify</div>
+          <div className="fp-box empty" />
 
-      <div className="fp-label-tight" style={{ marginTop: 8 }}>
-        Is your entity&rsquo;s primary business activity investing? Select &lsquo;Yes&rsquo; if more than 50% of income is from investment activities, or more than 50% of assets produce investment income.
-      </div>
-      <div className="fp-row" style={{ marginTop: 4 }}>
-        <Tick on>Yes</Tick>
-        <Tick>No</Tick>
-      </div>
+          <div className="fp-label-tight" style={{ marginTop: 6 }}>Full name of company/partnership/trustee/other entity*</div>
+          <div className={boxCls("entity.trustee")} {...dk("entity.trustee")}>
+            {isCompany ? F("entity.name") : F("entity.trustee")}
+          </div>
 
-      <div className="fp-label-tight" style={{ marginTop: 8 }}>Country established, if not Australia*</div>
-      <div className="fp-box empty" />
+          <div className="fp-label-tight" style={{ marginTop: 6 }}>Full name of superannuation fund/trust*</div>
+          <div className={boxCls("entity.name")} {...dk("entity.name")}>{F("entity.name")}</div>
 
-      <div className="fp-two-col" style={{ marginTop: 6 }}>
-        <div>
-          <div className="fp-label-tight">ABN/ARBN/ARSN (if any)</div>
-          <DigitBoxes value={F("entity.abn")} n={11} highlight={highlightKey === "entity.abn"} dataKey="entity.abn" />
-        </div>
-        <div>
-          <div className="fp-label-tight">Tax File Number (trust &ndash; if applicable)</div>
-          <DigitBoxes value="" n={9} groups={[3, 3, 3]} />
-        </div>
-      </div>
+          <div className="fp-two-col">
+            <div>
+              <div className="fp-label-tight">Primary business/trust activity*</div>
+              <div className="fp-box">{primaryActivity}</div>
+            </div>
+            <div>
+              <div className="fp-label-tight">Are you a charity?*</div>
+              <div className="fp-row" style={{ marginTop: 4 }}>
+                <Tick>Yes</Tick>
+                <Tick on>No</Tick>
+              </div>
+            </div>
+          </div>
+
+          <div className="fp-label-tight" style={{ marginTop: 8 }}>
+            Is your entity&rsquo;s primary business activity investing? Select &lsquo;Yes&rsquo; if more than 50% of income is from investment activities, or more than 50% of assets produce investment income.
+          </div>
+          <div className="fp-row" style={{ marginTop: 4 }}>
+            <Tick on>Yes</Tick>
+            <Tick>No</Tick>
+          </div>
+
+          <div className="fp-label-tight" style={{ marginTop: 8 }}>Country established, if not Australia*</div>
+          <div className="fp-box empty" />
+
+          <div className="fp-two-col" style={{ marginTop: 6 }}>
+            <div>
+              <div className="fp-label-tight">ABN/ARBN/ARSN (if any)</div>
+              <DigitBoxes value={F("entity.abn")} n={11} highlight={highlightKey === "entity.abn"} dataKey="entity.abn" />
+            </div>
+            <div>
+              <div className="fp-label-tight">Tax File Number ({isCompany ? "company" : "trust"} &ndash; if applicable)</div>
+              <DigitBoxes value={F("entity.tfn")} n={9} groups={[3, 3, 3]} highlight={highlightKey === "entity.tfn"} dataKey="entity.tfn" />
+            </div>
+          </div>
+
+          <div className="fp-label-tight" style={{ marginTop: 8, fontWeight: 600 }}>Postal address</div>
+          <div className={boxCls("investor.residential_address")} {...dk("investor.residential_address")}>{F("investor.residential_address")}</div>
+
+          <div className="fp-phones" style={{ marginTop: 6 }}>
+            <div>
+              <div className="fp-label-tight">Work phone number</div>
+              <div className="fp-box">(03) 9000 0000</div>
+            </div>
+            <div>
+              <div className="fp-label-tight">Home phone number</div>
+              <div className="fp-box empty" />
+            </div>
+            <div>
+              <div className="fp-label-tight">Mobile phone number</div>
+              <div className={boxCls("investor.phone")} {...dk("investor.phone")}>{mobilePhone}</div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <Bar n="2">NON-INDIVIDUAL INVESTORS DETAILS &ndash; COMPANY/TRUSTS/PARTNERSHIP/SUPERANNUATION FUND OR OTHER ENTITY</Bar>
+          <div className="fp-skipped">
+            Section 2 not applicable &mdash; {client.name} is an individual investor. Continue to Section 3.
+          </div>
+        </>
+      )}
 
       <PageFoot left="Fortlake Funds &ndash; application forms" right="A3" />
     </div>
   );
 
   // ===========================================================
-  // PAGE 2 — Section 2 continued (Trust info), Section 3 (joint investors)
+  // PAGE 2 — Section 2 continued + email (Trust/SMSF only),
+  //          else Section 5 for Company.
   // ===========================================================
-  const page2 = (
+  const page2 = (isTrust || isSMSF) ? (
     <div className="fp-page">
       <BarCont n="2">NON-INDIVIDUAL INVESTORS DETAILS &ndash; COMPANY/TRUSTS/PARTNERSHIP/SUPERANNUATION FUND OR OTHER ENTITY (CONTINUED)</BarCont>
+
+      <div className="fp-label-tight">Email address</div>
+      <div className={boxCls("investor.email")} {...dk("investor.email")}>{F("investor.email")}</div>
 
       <SubBar>TRUSTS</SubBar>
       <div className="fp-help" style={{ marginBottom: 6 }}>Complete this additional section only if you are a Trust.</div>
@@ -251,45 +299,109 @@ function FortlakePaper({ client, highlightKey }) {
         <Tick>Registered managed investment scheme</Tick>
         <div className="fp-indented"><div className="fp-label-tight">Provide Australian Registered Scheme Number (ARSN)</div><div className="fp-box empty" /></div>
 
-        <Tick>Regulated trust (e.g. an SMSF)</Tick>
+        <Tick on={isSMSF}>Regulated trust (e.g. an SMSF)</Tick>
         <div className="fp-indented">
-          <div className="fp-label-tight">Provide name of the regulator (e.g. ASIC, APRA, ATO)</div><div className="fp-box empty" />
-          <div className="fp-label-tight">Provide the trust&rsquo;s ABN or registration/licensing details</div><div className="fp-box empty" />
+          <div className="fp-label-tight">Provide name of the regulator (e.g. ASIC, APRA, ATO)</div>
+          <div className="fp-box">{isSMSF ? "ATO" : ""}</div>
+          <div className="fp-label-tight">Provide the trust&rsquo;s ABN or registration/licensing details</div>
+          <div className="fp-box">{isSMSF ? F("entity.abn") : ""}</div>
         </div>
 
         <Tick>Government superannuation fund</Tick>
         <div className="fp-indented"><div className="fp-label-tight">Provide name of the legislation establishing the fund</div><div className="fp-box empty" /></div>
 
-        <Tick on>Other trust type</Tick>
+        <Tick on={isTrust}>Other trust type</Tick>
         <div className="fp-indented">
           <div className="fp-label-tight">Trust description (e.g. family, unit, charitable, estate)</div>
-          <div className={boxCls("entity.trustee")}>Family discretionary trust</div>
+          <div className="fp-box">{isTrust ? "Family discretionary trust" : ""}</div>
         </div>
       </div>
 
       <div className="fp-help" style={{ marginTop: 8 }}>
-        Trust established <strong {...dk("entity.trust_date")}>{F("entity.trust_date")}</strong>. Trustees acting jointly: <strong {...dk("entity.trustee")}>{F("entity.trustee")}</strong>.
+        Trust established <strong {...dk("entity.trust_date")}>{F("entity.trust_date")}</strong>. Trustees: <strong {...dk("entity.trustee")}>{F("entity.trustee")}</strong>.
       </div>
 
       <PageFoot left="A4" right="Fortlake Funds &ndash; application forms" />
     </div>
-  );
+  ) : isCompany ? (
+    <div className="fp-page">
+      <Bar n="5">AUSTRALIAN COMPANY DETAILS</Bar>
+      <SubBarSmall>5.1 GENERAL INFORMATION</SubBarSmall>
+      <div className="fp-label-tight">Full name as registered by ASIC*</div>
+      <div className={boxCls("entity.name")} {...dk("entity.name")}>{F("entity.name")}</div>
+
+      <div className="fp-label-tight" style={{ marginTop: 6 }}>Australian Company Number (ACN)*</div>
+      <DigitBoxes value={F("entity.abn").replace(/\D/g, "").slice(2, 11) /* ACN = last 9 of ABN */} n={9} />
+
+      <div className="fp-label-tight" style={{ marginTop: 6 }}>Registered office address (PO Box is NOT acceptable)*</div>
+      <div className={boxCls("investor.residential_address")} {...dk("investor.residential_address")}>{F("investor.residential_address")}</div>
+
+      <SubBarSmall>5.3 COMPANY TYPE</SubBarSmall>
+      <div className="fp-row" style={{ marginTop: 4 }}>
+        <Tick>Public</Tick>
+        <Tick on>Proprietary</Tick>
+      </div>
+
+      <SubBarSmall>5.4 DIRECTORS</SubBarSmall>
+      <div className="fp-help" style={{ marginBottom: 6 }}>Provide full name of each director (proprietary companies).</div>
+      <div className="fp-two-col">
+        <div>
+          <div className="fp-label-tight">Full given name(s)*</div>
+          {(client.members || []).filter(m => /director/i.test(m)).map((m, i) => {
+            const name = (m.split("—")[0] || "").trim();
+            const parts = name.split(/\s+/);
+            return (
+              <div key={i} className="fp-box" style={{ marginBottom: 4 }}>
+                {parts.slice(0, -1).join(" ")}
+              </div>
+            );
+          })}
+        </div>
+        <div>
+          <div className="fp-label-tight">Surname*</div>
+          {(client.members || []).filter(m => /director/i.test(m)).map((m, i) => {
+            const name = (m.split("—")[0] || "").trim();
+            const parts = name.split(/\s+/);
+            return <div key={i} className="fp-box" style={{ marginBottom: 4 }}>{parts.slice(-1)[0]}</div>;
+          })}
+        </div>
+      </div>
+
+      <PageFoot left="A7" right="Fortlake Funds &ndash; application forms" />
+    </div>
+  ) : null;
 
   // ===========================================================
   // PAGE 3 — Section 3 (Individual Investor Details — joint)
   // ===========================================================
-  const page3 = (
+  // For Company (Costa), Section 3 doesn't apply — the entity itself is
+  // the investor. Render a one-line skipped note in place of the section.
+  const investor1Title = F("investor.title") || "Mr";
+  const isForeignTax = F("investor.foreign_tax_resident") === "Yes";
+  const page3 = isCompany ? (
+    <div className="fp-page">
+      <Bar n="3">INDIVIDUAL INVESTOR DETAILS</Bar>
+      <div className="fp-skipped">
+        Section 3 not applicable &mdash; {client.name} is a company investor. Individual director details are captured in Section 5.4.
+      </div>
+      <PageFoot left="Fortlake Funds &ndash; application forms" right="A5" />
+    </div>
+  ) : (
     <div className="fp-page">
       <Bar n="3">INDIVIDUAL INVESTOR DETAILS</Bar>
       <div className="fp-help" style={{ marginBottom: 10 }}>
         If you are an investor that is an individual (including a sole trader) or an individual Trustee, please complete this section.
       </div>
-      <div className="fp-two-col fp-investors">
-        {/* INVESTOR 1 — John (driven by client.fields) */}
+      <div className={`fp-two-col fp-investors ${!investor2 ? "single" : ""}`}>
+        {/* INVESTOR 1 — bound to client.fields */}
         <div>
           <div className="fp-invlabel">INVESTOR 1 (individual accounts)</div>
           <div className="fp-row" style={{ marginTop: 4 }}>
-            <Tick on small>Mr</Tick><Tick small>Mrs</Tick><Tick small>Miss</Tick><Tick small>Ms</Tick><Tick small>Other</Tick>
+            <Tick on={investor1Title === "Mr"} small>Mr</Tick>
+            <Tick on={investor1Title === "Mrs"} small>Mrs</Tick>
+            <Tick on={investor1Title === "Miss"} small>Miss</Tick>
+            <Tick on={investor1Title === "Ms"} small>Ms</Tick>
+            <Tick on={investor1Title === "Other"} small>Other</Tick>
           </div>
 
           <div className="fp-label-tight" style={{ marginTop: 6 }}>Full given name(s)*</div>
@@ -302,7 +414,8 @@ function FortlakePaper({ client, highlightKey }) {
           <div className="fp-row" style={{ gap: 12 }}>
             <div className={boxCls("investor.dob")} style={{ flex: "0 0 140px" }} {...dk("investor.dob")}>{F("investor.dob")}</div>
             <div className="fp-label-tight" style={{ marginTop: 0 }}>Gender</div>
-            <Tick on small>Male</Tick><Tick small>Female</Tick>
+            <Tick on={investor1Title === "Mr"} small>Male</Tick>
+            <Tick on={investor1Title !== "Mr"} small>Female</Tick>
           </div>
 
           <div className="fp-label-tight" style={{ marginTop: 6 }}>Occupation*</div>
@@ -316,8 +429,8 @@ function FortlakePaper({ client, highlightKey }) {
 
           <div className="fp-label-tight" style={{ marginTop: 6 }}>Are you a tax resident of another country?*</div>
           <div className="fp-row" style={{ marginTop: 4 }} {...dk("investor.foreign_tax_resident")}>
-            <Tick small>Yes</Tick>
-            <Tick on small>No</Tick>
+            <Tick on={isForeignTax} small>Yes</Tick>
+            <Tick on={!isForeignTax} small>No</Tick>
           </div>
 
           <div className="fp-label-tight" style={{ marginTop: 6 }}>Australian residential address (PO Box NOT acceptable)*</div>
@@ -327,47 +440,54 @@ function FortlakePaper({ client, highlightKey }) {
           <div className={boxCls("investor.email")} {...dk("investor.email")}>{F("investor.email")}</div>
         </div>
 
-        {/* INVESTOR 2 — Margaret (hardcoded for demo) */}
-        <div>
-          <div className="fp-invlabel">INVESTOR 2 (joint accounts)</div>
-          <div className="fp-row" style={{ marginTop: 4 }}>
-            <Tick small>Mr</Tick><Tick on small>Mrs</Tick><Tick small>Miss</Tick><Tick small>Ms</Tick><Tick small>Other</Tick>
+        {/* INVESTOR 2 — joint trustee (Smith → Margaret, Nguyen → Mai) */}
+        {investor2 && (
+          <div>
+            <div className="fp-invlabel">INVESTOR 2 (joint accounts)</div>
+            <div className="fp-row" style={{ marginTop: 4 }}>
+              <Tick on={investor2.title === "Mr"} small>Mr</Tick>
+              <Tick on={investor2.title === "Mrs"} small>Mrs</Tick>
+              <Tick on={investor2.title === "Miss"} small>Miss</Tick>
+              <Tick on={investor2.title === "Ms"} small>Ms</Tick>
+              <Tick on={investor2.title === "Other"} small>Other</Tick>
+            </div>
+
+            <div className="fp-label-tight" style={{ marginTop: 6 }}>Full given name(s)*</div>
+            <div className="fp-box">{investor2.given}</div>
+
+            <div className="fp-label-tight" style={{ marginTop: 6 }}>Surname*</div>
+            <div className="fp-box">{investor2.surname}</div>
+
+            <div className="fp-label-tight" style={{ marginTop: 6 }}>Date of birth* &nbsp;<span className="fp-help">(dd/mm/yyyy)</span></div>
+            <div className="fp-row" style={{ gap: 12 }}>
+              <div className="fp-box" style={{ flex: "0 0 140px" }}>{investor2.dob}</div>
+              <div className="fp-label-tight" style={{ marginTop: 0 }}>Gender</div>
+              <Tick on={investor2.gender === "Male"} small>Male</Tick>
+              <Tick on={investor2.gender === "Female"} small>Female</Tick>
+            </div>
+
+            <div className="fp-label-tight" style={{ marginTop: 6 }}>Occupation*</div>
+            <div className="fp-box">{investor2.occupation}</div>
+
+            <div className="fp-label-tight" style={{ marginTop: 6 }}>Your main country of residence, if not Australia*</div>
+            <div className="fp-box empty" />
+
+            <div className="fp-label-tight" style={{ marginTop: 6 }}>Tax File Number*</div>
+            <DigitBoxes value={investor2.tfn} n={9} groups={[3, 3, 3]} />
+
+            <div className="fp-label-tight" style={{ marginTop: 6 }}>Are you a tax resident of another country?*</div>
+            <div className="fp-row" style={{ marginTop: 4 }}>
+              <Tick small>Yes</Tick>
+              <Tick on small>No</Tick>
+            </div>
+
+            <div className="fp-label-tight" style={{ marginTop: 6 }}>Australian residential address (PO Box NOT acceptable)*</div>
+            <div className="fp-box">{F("investor.residential_address")}</div>
+
+            <div className="fp-label-tight" style={{ marginTop: 6 }}>Email address for investor 2</div>
+            <div className="fp-box">{investor2.email}</div>
           </div>
-
-          <div className="fp-label-tight" style={{ marginTop: 6 }}>Full given name(s)*</div>
-          <div className="fp-box">{margaret.given}</div>
-
-          <div className="fp-label-tight" style={{ marginTop: 6 }}>Surname*</div>
-          <div className="fp-box">{margaret.surname}</div>
-
-          <div className="fp-label-tight" style={{ marginTop: 6 }}>Date of birth* &nbsp;<span className="fp-help">(dd/mm/yyyy)</span></div>
-          <div className="fp-row" style={{ gap: 12 }}>
-            <div className="fp-box" style={{ flex: "0 0 140px" }}>{margaret.dob}</div>
-            <div className="fp-label-tight" style={{ marginTop: 0 }}>Gender</div>
-            <Tick small>Male</Tick><Tick on small>Female</Tick>
-          </div>
-
-          <div className="fp-label-tight" style={{ marginTop: 6 }}>Occupation*</div>
-          <div className="fp-box">{margaret.occupation}</div>
-
-          <div className="fp-label-tight" style={{ marginTop: 6 }}>Your main country of residence, if not Australia*</div>
-          <div className="fp-box empty" />
-
-          <div className="fp-label-tight" style={{ marginTop: 6 }}>Tax File Number*</div>
-          <DigitBoxes value={margaret.tfn} n={9} groups={[3, 3, 3]} />
-
-          <div className="fp-label-tight" style={{ marginTop: 6 }}>Are you a tax resident of another country?*</div>
-          <div className="fp-row" style={{ marginTop: 4 }}>
-            <Tick small>Yes</Tick>
-            <Tick on small>No</Tick>
-          </div>
-
-          <div className="fp-label-tight" style={{ marginTop: 6 }}>Australian residential address (PO Box NOT acceptable)*</div>
-          <div className="fp-box">{margaret.address}</div>
-
-          <div className="fp-label-tight" style={{ marginTop: 6 }}>Email address for investor 2</div>
-          <div className="fp-box">{margaret.email}</div>
-        </div>
+        )}
       </div>
 
       <PageFoot left="Fortlake Funds &ndash; application forms" right="A5" />
@@ -527,24 +647,39 @@ function FortlakePaper({ client, highlightKey }) {
         </Tick>
       </div>
 
-      <div className="fp-sig-row">
-        <div>
-          <div className="fp-label-tight">Original signature of investor 1 or company officer</div>
-          <div className="fp-sig-line" style={{ fontFamily: "Georgia, serif", fontStyle: "italic" }}>John A. Smith</div>
-          <div className="fp-two-col" style={{ marginTop: 4, gap: 12 }}>
-            <div><div className="fp-label-tight">Print name</div><div className="fp-box">JOHN ANTHONY SMITH</div></div>
-            <div><div className="fp-label-tight">Date</div><div className="fp-box">28/05/2026</div></div>
+      {(() => {
+        // Build the investor 1 signature from client.fields.
+        const given = F("investor.given_names") || "";
+        const surname = F("investor.surname") || "";
+        const firstGiven = given.split(/\s+/)[0] || "";
+        const middleInitial = (given.split(/\s+/)[1] || "")[0] || "";
+        const inv1Sig = middleInitial ? `${firstGiven} ${middleInitial}. ${surname}` : `${firstGiven} ${surname}`;
+        const inv1Print = `${given} ${surname}`.toUpperCase().trim();
+        const inv2Sig = investor2 ? `${investor2.given.split(/\s+/)[0]} ${(investor2.given.split(/\s+/)[1] || "")[0] || ""}. ${investor2.surname}` : "";
+        const inv2Print = investor2 ? `${investor2.given} ${investor2.surname}`.toUpperCase() : "";
+        return (
+          <div className={`fp-sig-row ${!investor2 ? "single" : ""}`}>
+            <div>
+              <div className="fp-label-tight">Original signature of investor 1 or company officer</div>
+              <div className="fp-sig-line" style={{ fontFamily: "Georgia, serif", fontStyle: "italic" }}>{inv1Sig}</div>
+              <div className="fp-two-col" style={{ marginTop: 4, gap: 12 }}>
+                <div><div className="fp-label-tight">Print name</div><div className="fp-box">{inv1Print}</div></div>
+                <div><div className="fp-label-tight">Date</div><div className="fp-box">28/05/2026</div></div>
+              </div>
+            </div>
+            {investor2 && (
+              <div>
+                <div className="fp-label-tight">Original signature of investor 2 or company officer</div>
+                <div className="fp-sig-line" style={{ fontFamily: "Georgia, serif", fontStyle: "italic" }}>{inv2Sig}</div>
+                <div className="fp-two-col" style={{ marginTop: 4, gap: 12 }}>
+                  <div><div className="fp-label-tight">Print name</div><div className="fp-box">{inv2Print}</div></div>
+                  <div><div className="fp-label-tight">Date</div><div className="fp-box">28/05/2026</div></div>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-        <div>
-          <div className="fp-label-tight">Original signature of investor 2 or company officer</div>
-          <div className="fp-sig-line" style={{ fontFamily: "Georgia, serif", fontStyle: "italic" }}>Margaret L. Smith</div>
-          <div className="fp-two-col" style={{ marginTop: 4, gap: 12 }}>
-            <div><div className="fp-label-tight">Print name</div><div className="fp-box">MARGARET LOUISE SMITH</div></div>
-            <div><div className="fp-label-tight">Date</div><div className="fp-box">28/05/2026</div></div>
-          </div>
-        </div>
-      </div>
+        );
+      })()}
 
       <div className="fp-mail-strip">
         Send the completed form to: <strong>Colonial First State Reply Paid 27, Sydney NSW 2001</strong>

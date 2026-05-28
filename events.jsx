@@ -76,11 +76,13 @@ SCRIPTS.new_client_smith = async ({ dispatch, toast, wait, setProc, state }) => 
     updates: {
       "entity.name":       { value: "Smith Family Trust",   status: "verified", source: "Smith_Trust_Deed.pdf · p.1" },
       "entity.abn":        { value: "47 815 392 614",        status: "verified", source: "Smith_Trust_Deed.pdf · p.1" },
+      "entity.tfn":        { value: "412 587 904",           status: "verified", source: "Smith_Trust_Deed.pdf · p.1 · ATO checksum OK" },
       "entity.trustee":    { value: "John & Margaret Smith", status: "verified", source: "Smith_Trust_Deed.pdf · p.2" },
       "entity.trust_date": { value: "14/06/2014",            status: "verified", source: "Smith_Trust_Deed.pdf · p.1" },
+      "investor.title":    { value: "Mr",                    status: "verified", source: "Dynamics" },
     },
   });
-  dispatch({ type: "ADD_ACTIVITY", clientId: "smith", entry: { actor: "System", desc: "Trust deed found on SharePoint · extracted entity name, ABN, trustees, establishment date" } });
+  dispatch({ type: "ADD_ACTIVITY", clientId: "smith", entry: { actor: "System", desc: "Trust deed found on SharePoint · extracted entity name, ABN, TFN, trustees, establishment date" } });
 
   steps = advance(steps, "Pulling trust documents from SharePoint", "Building baseline checklist for the entity");
   setProc("smith", "Building baseline checklist for a trust client…", steps);
