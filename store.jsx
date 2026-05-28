@@ -178,6 +178,12 @@ function reducer(state, action) {
       return { ...state, clients };
     }
 
+    case "SET_CLIENT_ONBOARDING_TO": {
+      const { clientId, onboardingTo } = action;
+      const clients = state.clients.map(c => c.id === clientId ? { ...c, onboardingTo: { ...(c.onboardingTo || {}), ...onboardingTo } } : c);
+      return { ...state, clients };
+    }
+
     case "OPEN_PREVIEW":
       return { ...state, previewForm: { clientId: action.clientId, formId: action.formId } };
     case "CLOSE_PREVIEW":

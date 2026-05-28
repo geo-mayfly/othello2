@@ -5,8 +5,8 @@
 function ClientFileTabs({ client, fieldsFlash, formsFlash }) {
   const [tab, setTab] = useState("checklist");
   const [checklistMode, setChecklistMode] = useState("perform");
-  const isHero = client.id === "smith";
 
+  const fieldsCount = Object.keys(client.fields || {}).length;
   const docsCount = client.documents?.length || 0;
   const formsCount = client.forms?.length || 0;
   const activityCount = client.activity?.length || 0;
@@ -15,7 +15,7 @@ function ClientFileTabs({ client, fieldsFlash, formsFlash }) {
     <div className="cf-section">
       <div className="tabs">
         <button className={`tab ${tab === "checklist" ? "active" : ""}`} onClick={() => setTab("checklist")}>
-          Checklist {isHero && <span className="tab-count">{Object.keys(client.fields || {}).length}</span>}
+          Checklist {fieldsCount > 0 && <span className="tab-count">{fieldsCount}</span>}
         </button>
         <button className={`tab ${tab === "forms" ? "active" : ""}`} onClick={() => setTab("forms")}>
           Forms <span className="tab-count">{formsCount}</span>
@@ -27,7 +27,7 @@ function ClientFileTabs({ client, fieldsFlash, formsFlash }) {
           Activity <span className="tab-count">{activityCount}</span>
         </button>
         <div style={{ flex: 1 }} />
-        {tab === "checklist" && isHero && (
+        {tab === "checklist" && fieldsCount > 0 && (
           <div className="seg" style={{ marginBottom: 4 }}>
             <button className={checklistMode === "perform" ? "on" : ""} onClick={() => setChecklistMode("perform")}>Per form</button>
             <button className={checklistMode === "perclient" ? "on" : ""} onClick={() => setChecklistMode("perclient")}>Per client</button>
@@ -35,24 +35,10 @@ function ClientFileTabs({ client, fieldsFlash, formsFlash }) {
         )}
       </div>
 
-      {tab === "checklist" && isHero && <Checklist client={client} mode={checklistMode} flash={fieldsFlash} />}
-      {tab === "checklist" && !isHero && <NotInteractiveNotice client={client} />}
+      {tab === "checklist" && <Checklist client={client} mode={checklistMode} flash={fieldsFlash} />}
       {tab === "forms" && <FormsList client={client} flash={formsFlash} />}
       {tab === "docs" && <DocumentsList client={client} />}
       {tab === "activity" && <ActivityList client={client} />}
-    </div>
-  );
-}
-
-function NotInteractiveNotice({ client }) {
-  return (
-    <div className="empty-state">
-      <Icon name="people" size={24} />
-      <div className="t-secondary" style={{ maxWidth: 360 }}>
-        Detailed checklist not seeded for {client.name} in this demo.
-        Switch to the <strong style={{ color: "var(--text-primary)" }}>Smith Family Trust</strong> for the full walkthrough,
-        or use this row for the reverse beat / status story.
-      </div>
     </div>
   );
 }

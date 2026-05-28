@@ -117,6 +117,21 @@ SCRIPTS.adviser_instruction = async ({ dispatch, toast, wait, setProc, state }) 
   steps = advance(steps, "Reading adviser brief", "Capturing investment details");
   setProc(cid, "Capturing investment details from the brief…", steps);
   await wait(1000);
+
+  // First: populate the client's onboarding mandate so the "Onboarding to"
+  // summary card visibly fills in (it ships empty in SMITH_SHELL).
+  dispatch({
+    type: "SET_CLIENT_ONBOARDING_TO",
+    clientId: cid,
+    onboardingTo: {
+      product: "Fortlake Real-Income Fund",
+      productType: "wholesale managed fund",
+      route: "Hub24",
+      amount: "AUD 250,000",
+      support: "wholesale, no advice",
+    },
+  });
+
   dispatch({
     type: "UPDATE_CLIENT_FIELDS", clientId: cid,
     updates: {
@@ -127,10 +142,10 @@ SCRIPTS.adviser_instruction = async ({ dispatch, toast, wait, setProc, state }) 
     },
   });
   steps = updateSteps(steps, "Capturing investment details", "done");
-  setProc(cid, "Brief processed · 4 investment fields ready", steps);
+  setProc(cid, "Brief processed · onboarding mandate set · 4 investment fields ready", steps);
   await wait(500);
   dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "Adviser · Catherine Halford", desc: "Apply John to Fortlake Real-Income via Hub24 — wholesale, no advice · $250,000" } });
-  toast("Adviser brief applied · 4 fields filled", "ready");
+  toast("Adviser brief applied · mandate set · 4 fields filled", "ready");
 };
 
 // ---------------------------------------------------------------

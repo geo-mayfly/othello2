@@ -152,13 +152,24 @@ function SummaryCards({ client }) {
       <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 12 }}>
         <div className="card" style={{ padding: "14px 16px" }}>
           <div className="t-label" style={{ marginBottom: 6 }}>Onboarding to</div>
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 2 }}>{onb.product}</div>
-          <div className="t-secondary" style={{ fontSize: 12.5, marginBottom: 10 }}>{onb.productType}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", fontSize: 13, color: "var(--text-secondary)" }}>
-            <span>Route</span><span style={{ color: "var(--text-primary)" }}>via {onb.route}</span>
-            <span>Amount</span><span style={{ color: "var(--text-primary)" }} className="t-mono">{onb.amount}</span>
-            <span>Support</span><span style={{ color: "var(--text-primary)" }}>{onb.support}</span>
-          </div>
+          {onb.product ? (
+            <>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 2 }}>{onb.product}</div>
+              <div className="t-secondary" style={{ fontSize: 12.5, marginBottom: 10 }}>{onb.productType}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", fontSize: 13, color: "var(--text-secondary)" }}>
+                <span>Route</span><span style={{ color: "var(--text-primary)" }}>via {onb.route}</span>
+                <span>Amount</span><span style={{ color: "var(--text-primary)" }} className="t-mono">{onb.amount}</span>
+                <span>Support</span><span style={{ color: "var(--text-primary)" }}>{onb.support}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, color: "var(--text-secondary)" }}>Awaiting adviser instruction</div>
+              <div className="t-secondary" style={{ fontSize: 12.5 }}>
+                Product, platform and investment amount will populate once the adviser brief is received.
+              </div>
+            </>
+          )}
         </div>
         <div className="card" style={{ padding: "14px 16px" }}>
           <div className="t-label" style={{ marginBottom: 6 }}>Household & accounts</div>
@@ -354,6 +365,15 @@ function OutstandingSection({ client, runEvent }) {
 
   const items = buildOutstandingActions(client);
 
+  // Flagged-item count = fields with data but unresolved (review/conflict/failed).
+  // Used to surface a "Resolve flagged items" CTA so the operator has a clear
+  // action point — the alternative was a magic auto-resolve with no UI hook.
+  const FLAGGED = new Set(["review", "conflict", "failed"]);
+  const flaggedKeys = Object.entries(client.fields || {})
+    .filter(([, f]) => f && FLAGGED.has(f.status))
+    .map(([k]) => k);
+  const canResolveFlagged = client.id === "smith" && flaggedKeys.length > 0;
+
   if (items.length === 0) {
     const fortlakeReady = deriveFormStatus(client, "fortlake_application") === "ready";
     const allTerminal = confirmedForms.every(f => f.status === "confirmed" || f.status === "dispatched");
@@ -385,6 +405,22 @@ function OutstandingSection({ client, runEvent }) {
         <span className="cf-section-title">Outstanding <span className="pill missing" style={{ marginLeft: 6 }}>{items.length}</span></span>
         <span className="t-muted">Sorted by compliance impact, then age</span>
       </div>
+      {canResolveFlagged && (
+        <div className="action-row" style={{ alignItems: "center", background: "var(--attention-soft)", borderColor: "transparent" }}>
+          <span className="action-sev attention"><StatusGlyph status="review" size={14} /></span>
+          <div className="action-body">
+            <div className="action-title">{flaggedKeys.length} flagged item{flaggedKeys.length === 1 ? "" : "s"} awaiting your decision</div>
+            <div className="action-why">Low-confidence extractions, validation failures and source conflicts — confirm to clear them in one pass.</div>
+          </div>
+          <button
+            className="btn btn-primary"
+            onClick={() => runEvent("resolve_exceptions")}
+            style={{ alignSelf: "center" }}
+          >
+            Resolve flagged items <Icon name="arrow-right" size={14} />
+          </button>
+        </div>
+      )}
       {items.map(it => (
         <div key={it.id} className="action-row">
           <span className={`action-sev ${it.sev}`}><StatusGlyph status={it.sev === "missing" ? "missing" : "review"} size={14} /></span>

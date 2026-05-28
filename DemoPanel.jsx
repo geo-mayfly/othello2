@@ -74,6 +74,8 @@ const FLOWS = [
         ok:   (s) => stepDone(s, "confirm_forms"),
       },
       { id: "resolve_exceptions",    label: "Resolve flagged items",             desc: "Operator confirms account no., corrects TFN, picks address",
+        interactive: true,
+        interactiveHint: "In the Outstanding panel above, click the amber 'Resolve flagged items' button.",
         done: (s) => {
           const c = s.clients.find(c => c.id === "smith");
           return c?.fields["investor.tfn"]?.status === "verified" && c?.fields["investment.risk_ack"]?.status === "verified";
