@@ -15,6 +15,10 @@ function ClientFile() {
   const { selectedClientId, proc, fieldsFlash, formsFlash, clients } = state;
   const client = clients.find(c => c.id === selectedClientId);
 
+  // Activity window open/closed. Defaults closed; opens when the operator
+  // clicks the status line in the header.
+  const [activityOpen, setActivityOpen] = useState(false);
+
   // empty state
   if (!client) {
     return <Overview />;
@@ -27,8 +31,12 @@ function ClientFile() {
     : null;
   const statusTag = client.status === "needs" ? { kind: "missing", text: "Needs you" } : client.status === "in_progress" ? { kind: "attention", text: "In progress" } : { kind: "ready", text: "Done" };
 
+  const liveProc = proc?.clientId === client.id ? proc : null;
+  const seededSeqs = client.aiSequences || [];
+  const hasAnyActivity = !!liveProc || seededSeqs.length > 0;
+
   return (
-    <div className="content" style={{ minWidth: 0 }}>
+    <div className="content" style={{ minWidth: 0, position: "relative" }}>
       <div className="cf-header">
         <div className="cf-header-top">
           <div className="cf-name">{client.name}</div>
@@ -63,60 +71,118 @@ function ClientFile() {
             <span>{client.lastActivity}</span>
           </span>
         </div>
+        {hasAnyActivity && (
+          <div className="activity-anchor">
+            <ActivityChip
+              client={client}
+              liveProc={liveProc}
+              seededSeqs={seededSeqs}
+              queued={state.procQueue.length}
+              open={activityOpen}
+              onToggle={() => setActivityOpen(o => !o)}
+            />
+            {activityOpen && (
+              <ActivityWindow
+                client={client}
+                liveProc={liveProc}
+                queued={state.procQueue.length}
+                onClose={() => setActivityOpen(false)}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       <div className="cf-body">
-        <div className="cf-main">
-          <SummaryCards client={client} />
+        <SummaryCards client={client} />
 
-          {isHero && <OutstandingSection client={client} runEvent={runEvent} dispatch={dispatch} />}
+        {isHero && <OutstandingSection client={client} runEvent={runEvent} dispatch={dispatch} />}
 
-          <ClientFileTabs client={client} fieldsFlash={fieldsFlash[client.id] || {}} formsFlash={formsFlash[client.id] || {}} />
-        </div>
-        <ActivityPanel
-          client={client}
-          liveProc={proc?.clientId === client.id ? proc : null}
-          queued={state.procQueue.length}
-        />
+        <ClientFileTabs client={client} fieldsFlash={fieldsFlash[client.id] || {}} formsFlash={formsFlash[client.id] || {}} />
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------
-// Activity panel — floating right-column inside the client container.
-// Renders the live proc (if running on this client) as the top card,
-// plus every seeded aiSequence entry from data.js. Each card is its
-// own expandable record of an AI work item with sub-steps + evidence.
+// Activity chip — single status line in the client header.
+// Default view of the activity surface. Shows the live action being
+// processed by the AI (or "Idle · n recent" when nothing's running).
+// Click to expand the floating ActivityWindow with the full sequence
+// list and per-step evidence.
 // ---------------------------------------------------------------
-function ActivityPanel({ client, liveProc, queued }) {
+function ActivityChip({ client, liveProc, seededSeqs, queued, open, onToggle }) {
+  // Live: prefer the active proc; otherwise pick the first running seed.
+  const runningSeed = seededSeqs.find(s => s.state === "running");
+  const liveLabel = liveProc?.message
+    || (runningSeed && runningSeed.title)
+    || null;
+  const isLive = !!(liveProc || runningSeed);
+
+  const counts = {
+    alert:   seededSeqs.filter(s => s.state === "alert").length,
+    queued:  seededSeqs.filter(s => s.state === "queued").length,
+    done:    seededSeqs.filter(s => s.state === "done").length,
+  };
+
+  const idleSummary = (() => {
+    const parts = [];
+    if (counts.alert > 0)  parts.push(`${counts.alert} need attention`);
+    if (counts.queued > 0) parts.push(`${counts.queued} queued`);
+    if (counts.done > 0)   parts.push(`${counts.done} complete`);
+    return parts.length ? parts.join(" · ") : "Nothing in progress";
+  })();
+
+  return (
+    <button
+      className={`activity-chip ${isLive ? "live" : ""} ${open ? "open" : ""}`}
+      onClick={onToggle}
+      title={open ? "Hide activity" : "Show activity"}
+    >
+      <span className="activity-chip-state">
+        {isLive ? <span className="ap-dot" /> : <Icon name="check" size={12} />}
+      </span>
+      <span className="activity-chip-text">
+        {isLive ? (liveLabel || "Processing…") : idleSummary}
+      </span>
+      {queued > 0 && <span className="pill" style={{ fontSize: 10.5, padding: "1px 7px" }}>{queued} queued</span>}
+      <Icon name={open ? "chevron-up" : "chevron-down"} size={12} />
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------
+// Activity window — floating overlay opened from the chip. Holds the
+// live proc card (if any) plus every seeded aiSequence with sub-steps
+// and per-step evidence.
+// ---------------------------------------------------------------
+function ActivityWindow({ client, liveProc, queued, onClose }) {
   const seeded = client.aiSequences || [];
   const liveCard = liveProc ? procToCard(liveProc) : null;
   const cards = liveCard ? [liveCard, ...seeded] : seeded;
-
-  if (cards.length === 0) return null;
 
   const running = cards.filter(c => c.state === "running" || c.state === "live").length;
   const alert = cards.filter(c => c.state === "alert" || c.state === "queued").length;
   const done = cards.filter(c => c.state === "done").length;
 
   return (
-    <aside className="activity-panel">
-      <div className="activity-panel-header">
-        <span className="activity-panel-title">Activity</span>
-        <span className="activity-panel-counts">
+    <div className="activity-window">
+      <div className="activity-window-header">
+        <span className="activity-window-title">Activity</span>
+        <span className="activity-window-counts">
           {running > 0 && <span className="ap-count running">{running} running</span>}
           {alert > 0 && <span className="ap-count alert">{alert} need attention</span>}
           {done > 0 && <span className="ap-count done">{done} complete</span>}
         </span>
         {queued > 0 && <span className="pill" style={{ fontSize: 11 }}>{queued} queued</span>}
+        <button className="btn btn-ghost btn-icon" onClick={onClose} title="Collapse"><Icon name="x" size={14} /></button>
       </div>
-      <div className="activity-panel-body">
+      <div className="activity-window-body">
         {cards.map((seq, i) => (
           <ActivityCard key={seq.id || `live-${i}`} seq={seq} initiallyOpen={seq.state === "live" || seq.state === "running" || i === 0} />
         ))}
       </div>
-    </aside>
+    </div>
   );
 }
 
