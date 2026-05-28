@@ -228,7 +228,7 @@ function DemoPanel() {
       <button className="demo-tab" onClick={() => setOpen(true)}>
         <span className="demo-badge">DEMO</span>
         Controls
-        <Icon name="chevron-right" size={14} />
+        <Icon name="chevron-up" size={14} />
       </button>
     );
   }
