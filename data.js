@@ -939,18 +939,85 @@ const COMPLIANCE_SEED = [
 // ---------------------------------------------------------------
 // Source integrations
 // ---------------------------------------------------------------
+// Each entry has a logo `key` that maps to a brand-styled component in
+// SourcesSettings.jsx (see <SourceLogo />). Keep keys ASCII + stable.
 const SOURCES = [
-  { cat: "CRM", name: "Microsoft Dynamics", state: "connected", scope: "Contacts, accounts, activities", lastSync: "4m ago" },
-  { cat: "CRM", name: "Fin365", state: "available" },
-  { cat: "Document storage", name: "SharePoint", state: "connected", scope: "Client document libraries", lastSync: "9m ago" },
-  { cat: "Document storage", name: "OneDrive", state: "available" },
-  { cat: "Identity & verification", name: "Document Verification Service (DVS)", state: "connected", scope: "ID verification results", lastSync: "22m ago" },
-  { cat: "Identity & verification", name: "Digital onboarding", state: "available" },
-  { cat: "Investment platforms", name: "Hub24", state: "available" },
-  { cat: "Investment platforms", name: "Netwealth", state: "available" },
-  { cat: "Investment platforms", name: "Macquarie Wrap", state: "available" },
-  { cat: "Investment platforms", name: "Praemium", state: "available" },
-  { cat: "Email / notifications", name: "Microsoft 365", state: "connected", scope: "Send client requests, capture replies", lastSync: "1m ago" },
+  // ---- CRM ----
+  { cat: "CRM", logo: "dynamics", name: "Microsoft Dynamics 365", provider: "Microsoft",
+    description: "Sync contacts, households, accounts and adviser activities.",
+    verified: true, state: "connected", scope: "Contacts · Accounts · Activities", lastSync: "4m ago" },
+  { cat: "CRM", logo: "fin365", name: "Fin365", provider: "Fin365 Pty Ltd",
+    description: "Wealth-specific CRM for adviser firms — books of business, fee tracking.",
+    verified: true, state: "available" },
+  { cat: "CRM", logo: "salesforce", name: "Salesforce Financial Services Cloud", provider: "Salesforce",
+    description: "FSC standard objects, householding, and adviser pipelines.",
+    verified: true, state: "available" },
+
+  // ---- Document storage ----
+  { cat: "Document storage", logo: "sharepoint", name: "SharePoint", provider: "Microsoft",
+    description: "Read client document libraries; watch folders for new uploads.",
+    verified: true, state: "connected", scope: "Client document libraries", lastSync: "9m ago" },
+  { cat: "Document storage", logo: "onedrive", name: "OneDrive", provider: "Microsoft",
+    description: "Personal and team drives; auto-classify new documents.",
+    verified: true, state: "available" },
+  { cat: "Document storage", logo: "googledrive", name: "Google Drive", provider: "Google",
+    description: "Shared drive monitoring with optional OCR for scans.",
+    verified: true, state: "available" },
+
+  // ---- Identity & AML ----
+  { cat: "Identity & AML", logo: "dvs", name: "Document Verification Service", provider: "Attorney-General's Department",
+    description: "Government ID checks against driver's-licence, passport and visa registers.",
+    verified: true, state: "connected", scope: "ID verification results", lastSync: "22m ago" },
+  { cat: "Identity & AML", logo: "frankieone", name: "FrankieOne", provider: "FrankieOne",
+    description: "Digital onboarding, biometric matching and AUSTRAC-aligned KYC.",
+    verified: true, state: "available" },
+  { cat: "Identity & AML", logo: "refinitiv", name: "Refinitiv World-Check", provider: "LSEG",
+    description: "Sanctions, PEP and adverse-media screening for ongoing monitoring.",
+    verified: true, state: "available" },
+
+  // ---- Registries ----
+  { cat: "Registries", logo: "abr", name: "Australian Business Register", provider: "ATO",
+    description: "ABN, ACN and entity-type lookups with name and GST status.",
+    verified: true, state: "connected", scope: "ABN / ACN lookups", lastSync: "12m ago" },
+  { cat: "Registries", logo: "asic", name: "ASIC Connect", provider: "ASIC",
+    description: "Company extracts, director searches and business name registrations.",
+    verified: true, state: "connected", scope: "Company extracts · Directors", lastSync: "1h ago" },
+  { cat: "Registries", logo: "ato", name: "ATO TFN validation", provider: "Australian Taxation Office",
+    description: "TFN modulus-11 checksum and (where authorised) lookup.",
+    verified: true, state: "available" },
+
+  // ---- Investment platforms ----
+  { cat: "Investment platforms", logo: "hub24", name: "Hub24", provider: "Hub24 Limited",
+    description: "Wrap account opening, holdings, contributions and pension payments.",
+    verified: true, state: "available" },
+  { cat: "Investment platforms", logo: "netwealth", name: "Netwealth", provider: "Netwealth Group",
+    description: "Wrap and super account opening; managed-account model mappings.",
+    verified: true, state: "available" },
+  { cat: "Investment platforms", logo: "macquarie", name: "Macquarie Wrap", provider: "Macquarie",
+    description: "Wrap account opening, CMA opening and reporting feeds.",
+    verified: true, state: "available" },
+  { cat: "Investment platforms", logo: "praemium", name: "Praemium", provider: "Praemium",
+    description: "SMA and wrap administration with consolidated reporting.",
+    verified: true, state: "available" },
+
+  // ---- E-signature ----
+  { cat: "E-signature", logo: "docusign", name: "DocuSign", provider: "DocuSign Inc.",
+    description: "Send populated forms for signature; capture signed PDF + audit cert.",
+    verified: true, state: "connected", scope: "Envelopes · Audit certificates", lastSync: "31m ago" },
+  { cat: "E-signature", logo: "adobesign", name: "Adobe Acrobat Sign", provider: "Adobe",
+    description: "Alternate e-signature provider with the same envelope semantics.",
+    verified: true, state: "available" },
+
+  // ---- Email / notifications ----
+  { cat: "Email & notifications", logo: "m365", name: "Microsoft 365", provider: "Microsoft",
+    description: "Send client requests; capture replies as activity; calendar holds.",
+    verified: true, state: "connected", scope: "Outbound + reply capture", lastSync: "1m ago" },
+  { cat: "Email & notifications", logo: "gworkspace", name: "Google Workspace", provider: "Google",
+    description: "Gmail outbound + reply tracking; Calendar holds for review meetings.",
+    verified: true, state: "available" },
+  { cat: "Email & notifications", logo: "twilio", name: "Twilio SMS", provider: "Twilio",
+    description: "SMS chase reminders for time-critical client requests.",
+    verified: false, state: "available" },
 ];
 
 // expose globally
