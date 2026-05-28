@@ -57,7 +57,7 @@ function Sidebar() {
           <button className="nav-item">
             <div style={{ width: 22, height: 22, borderRadius: "50%", background: "linear-gradient(135deg, #5B8DEF, #B879F5)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "white", flexShrink: 0 }}>RL</div>
             <div className="ni-label" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>R. Lee</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Rachel Lee</span>
               <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Operations</span>
             </div>
           </button>

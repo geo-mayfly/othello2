@@ -73,7 +73,7 @@ const FORMS = {
     description: "New-investor application for the Fortlake Real-Income managed fund: identity, tax residency, bank and investment details.",
     category: "Fund applications",
     status: "live",
-    source: "Mapped from Fortlake_Application.pdf · approved 12 May by R. Lee",
+    source: "Mapped from Fortlake_Application.pdf · approved 12 May by Rachel Lee",
     lastUpdated: "12 May 2026",
     sourcePlatform: "Fortlake",
     sections: [
@@ -91,7 +91,7 @@ const FORMS = {
     description: "Foreign tax-residency declaration, required where the investor is a tax resident outside Australia.",
     category: "Identity & AML",
     status: "live",
-    source: "Mapped from FATCA_CRS_v3.pdf · approved 04 Mar by R. Lee",
+    source: "Mapped from FATCA_CRS_v3.pdf · approved 04 Mar by Rachel Lee",
     lastUpdated: "04 Mar 2026",
     sourcePlatform: "ATO",
     sections: [
@@ -106,7 +106,7 @@ const FORMS = {
     description: "Accountant-certified eligibility for wholesale offers; time-limited (24 months) — drives expiry monitoring.",
     category: "Identity & AML",
     status: "live",
-    source: "Mapped from Wholesale_Cert_template.pdf · approved 28 Feb by R. Lee",
+    source: "Mapped from Wholesale_Cert_template.pdf · approved 28 Feb by Rachel Lee",
     lastUpdated: "28 Feb 2026",
     sourcePlatform: "—",
     sections: [
@@ -121,7 +121,7 @@ const FORMS = {
     description: "Platform account opening for the investment wrap: account holders, designation and adviser details.",
     category: "Platform",
     status: "live",
-    source: "Mapped from Hub24_Acct_App.pdf · approved 21 Apr by R. Lee",
+    source: "Mapped from Hub24_Acct_App.pdf · approved 21 Apr by Rachel Lee",
     lastUpdated: "21 Apr 2026",
     sourcePlatform: "Hub24",
     sections: [
@@ -215,7 +215,7 @@ const SMITH_SHELL = {
     amount: "AUD 250,000",
     support: "wholesale, no advice",
   },
-  adviser: "C. Halford",
+  adviser: "Catherine Halford",
   status: "needs",
   lastActivity: "just now",
   fields: SMITH_INITIAL_FIELDS,
@@ -235,7 +235,7 @@ const SEED_CLIENTS = [
     members: ["Linh Nguyen — trustee","Mai Nguyen — trustee","Nguyen Super Fund — investing entity"],
     accounts: ["Hub24 \u00b7 SMSF account","Fortlake holding"],
     onboardingTo: { product: "Fortlake Real-Income Fund + Hub24 account", productType: "wholesale fund + platform", route: "Hub24", amount: "AUD 480,000", support: "wholesale, no advice" },
-    adviser: "S. Patel",
+    adviser: "Sanjay Patel",
     status: "in_progress",
     lastActivity: "12m ago",
     fields: {},   // not interactive; presented only via the list and overview
@@ -255,8 +255,8 @@ const SEED_CLIENTS = [
     entityType: "Individual",
     members: ["David Okafor — individual"],
     accounts: ["Netwealth \u00b7 wholesale offer"],
-    onboardingTo: { product: "Aurum Wholesale Opportunity Fund", productType: "wholesale offer", route: "Netwealth", amount: "AUD 320,000", support: "wholesale, no advice" },
-    adviser: "C. Halford",
+    onboardingTo: { product: "Aurum Capital · Wholesale Opportunity Fund", productType: "wholesale offer", route: "Netwealth", amount: "AUD 320,000", support: "wholesale, no advice" },
+    adviser: "Catherine Halford",
     status: "needs",
     lastActivity: "3h ago",
     fields: {},
@@ -278,14 +278,15 @@ const SEED_CLIENTS = [
     members: ["Aoife Brennan — trustee","Brennan Family Trust"],
     accounts: ["Macquarie CMA"],
     onboardingTo: { product: "Macquarie Cash Management Account", productType: "cash account", route: "Macquarie", amount: "AUD 600,000", support: "personal advice" },
-    adviser: "S. Patel",
+    adviser: "Sanjay Patel",
     status: "in_progress",
     lastActivity: "1d ago",
     fields: {},
     forms: [],
     documents: [],
     activity: [
-      { time: "1d ago", actor: "System", desc: "Renewal request emailed to client · awaiting reply" },
+      { time: "1d ago", actor: "System", desc: "Photo ID renewal request emailed to A. Brennan via Microsoft 365 · awaiting reply" },
+      { time: "2d ago", actor: "System", desc: "Photo ID expiry in 11 days · auto-chase scheduled" },
     ],
     readinessSummary: "Awaiting client reply",
   },
@@ -296,7 +297,7 @@ const SEED_CLIENTS = [
     members: ["Eleanor Whitlam — individual"],
     accounts: ["Hub24"],
     onboardingTo: { product: "Fortlake Real-Income Fund", productType: "wholesale managed fund", route: "Hub24", amount: "AUD 150,000", support: "wholesale, no advice" },
-    adviser: "C. Halford",
+    adviser: "Catherine Halford",
     status: "done",
     lastActivity: "8d ago",
     fields: {},
@@ -314,7 +315,7 @@ const SEED_CLIENTS = [
     members: ["Costa Holdings Pty Ltd — investing entity"],
     accounts: ["Netwealth wrap"],
     onboardingTo: { product: "Netwealth wrap account", productType: "platform", route: "Netwealth", amount: "AUD 1,250,000", support: "personal advice" },
-    adviser: "S. Patel",
+    adviser: "Sanjay Patel",
     status: "done",
     lastActivity: "14d ago",
     fields: {},
@@ -376,7 +377,7 @@ const CHAT_SCRIPTED = {
       source: "Trust Deed.pdf · Dynamics",
     },
     "what's the investment amount?": {
-      answer: "AUD 250,000 into the Fortlake Real-Income Fund via Hub24, distributions reinvested. This is from the adviser brief — C. Halford, 22 May 2026.",
+      answer: "AUD 250,000 into the Fortlake Real-Income Fund via Hub24, distributions reinvested. This is from the adviser brief — Catherine Halford, 22 May 2026.",
       source: "Adviser brief · 22 May 2026",
     },
     "who's the trustee?": {
@@ -402,7 +403,7 @@ const OVERVIEW_METRICS = {
 
 const COMPLIANCE_SEED = [
   { clientId: "okafor",  client: "Okafor, David", document: "Wholesale Certificate", state: "Expired", daysText: "4 days overdue", severity: "missing" },
-  { clientId: "brennan", client: "Brennan Family Trust", document: "Photo ID (Aoife Brennan)", state: "Expiring", daysText: "11 days", severity: "attention" },
+  { clientId: "brennan", client: "Brennan Family Trust", document: "Photo ID (Aoife Brennan)", state: "Expiring", daysText: "11 days · 08/06/2026", severity: "attention" },
 ];
 
 // ---------------------------------------------------------------

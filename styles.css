@@ -392,8 +392,14 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .checklist-group { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--r-card); overflow: hidden; margin-bottom: 12px; }
 .checklist-group-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; }
 .checklist-group-title { font-size: 13.5px; font-weight: 600; }
-.ready-bar { height: 4px; background: var(--bg-elevated-2); border-radius: 999px; overflow: hidden; flex: 1; max-width: 200px; margin: 0 12px; }
-.ready-bar-fill { height: 100%; background: var(--ready); transition: width 400ms ease; }
+.ready-bar { height: 4px; background: var(--bg-elevated-2); border-radius: 999px; overflow: hidden; flex: 1; max-width: 200px; margin: 0 12px; position: relative; }
+.ready-bar-fill { height: 100%; background: var(--ready); transition: width 700ms cubic-bezier(0.34, 1.46, 0.64, 1); }
+.ready-bar-fill.complete { animation: readyComplete 1200ms ease-out; }
+@keyframes readyComplete {
+  0%   { box-shadow: 0 0 0 0 var(--ready-soft); }
+  40%  { box-shadow: 0 0 14px 2px var(--ready); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
 .field-row {
   display: grid;
   grid-template-columns: 1.5fr 1fr 1.2fr auto;
@@ -415,10 +421,21 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .field-detail-grid dt { color: var(--text-muted); }
 .field-detail-grid dd { margin: 0; color: var(--text-primary); }
 
-.cross-fade-update { animation: crossFade 400ms ease; }
-@keyframes crossFade {
-  0% { background: var(--accent-soft); }
-  100% { background: transparent; }
+.cross-fade-update {
+  animation: fieldLand 900ms cubic-bezier(0.34, 1.36, 0.64, 1);
+  position: relative;
+  z-index: 1;
+}
+@keyframes fieldLand {
+  0%   { background: var(--ready-soft); box-shadow: inset 0 0 0 1px var(--ready); }
+  35%  { background: var(--ready-soft); box-shadow: inset 0 0 0 1px var(--ready), 0 0 18px -2px var(--ready); }
+  100% { background: transparent;       box-shadow: inset 0 0 0 1px transparent; }
+}
+.form-card.cross-fade-update { animation: cardLand 900ms cubic-bezier(0.34, 1.36, 0.64, 1); }
+@keyframes cardLand {
+  0%   { background: var(--ready-soft); border-color: var(--ready); box-shadow: 0 0 0 0 var(--ready-soft); }
+  35%  { background: var(--ready-soft); border-color: var(--ready); box-shadow: 0 0 24px -4px var(--ready); }
+  100% { background: var(--bg-surface); border-color: var(--border-default); box-shadow: none; }
 }
 
 /* tabs */
@@ -936,3 +953,144 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 
 /* badge for "in review" status */
 .field-row[data-status="review"] { background: rgba(226, 178, 58, 0.04); }
+
+/* ============================================================
+   Distribution strip — post-dispatch fan-out
+   ============================================================ */
+.dist-strip {
+  margin-top: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dist-strip .dist-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+.dist-step {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  opacity: 0.4;
+  transition: opacity 200ms ease, color 200ms ease;
+}
+.dist-step.active { color: var(--accent); opacity: 1; }
+.dist-step.done { color: var(--text-primary); opacity: 1; animation: distStepLand 360ms cubic-bezier(0.34, 1.46, 0.64, 1); }
+@keyframes distStepLand {
+  0%   { transform: translateX(-3px); background: var(--ready-soft); }
+  60%  { transform: translateX(0);    background: var(--ready-soft); }
+  100% { transform: translateX(0);    background: transparent; }
+}
+.dist-step-mark {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid var(--border-default);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.dist-step.active .dist-step-mark { border-color: var(--accent); }
+.dist-step.active .dist-step-mark::after {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.dist-step.done .dist-step-mark { background: var(--ready); border-color: var(--ready); color: white; }
+.dist-step-target { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); }
+.dist-step.done .dist-step-target { color: var(--text-secondary); }
+
+/* ============================================================
+   Outcome credit — celebration banner at end of onboarding
+   ============================================================ */
+.outcome-credit {
+  margin-top: 16px;
+  background: linear-gradient(135deg, var(--ready-soft), var(--accent-soft));
+  border: 1px solid var(--ready);
+  border-radius: var(--r-card);
+  padding: 18px 22px;
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  animation: outcomeIn 600ms cubic-bezier(0.34, 1.36, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+.outcome-credit::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle at top right, var(--ready-soft), transparent 60%);
+  pointer-events: none;
+}
+@keyframes outcomeIn {
+  0%   { transform: translateY(8px) scale(0.98); opacity: 0; }
+  100% { transform: translateY(0)   scale(1);    opacity: 1; }
+}
+.outcome-credit .oc-mark {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--ready); color: white;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px var(--ready-soft);
+}
+.outcome-credit .oc-title { font-weight: 600; font-size: 15px; color: var(--text-primary); }
+.outcome-credit .oc-stats {
+  margin-top: 4px;
+  display: flex; gap: 16px;
+  font-size: 12.5px; color: var(--text-secondary);
+}
+.outcome-credit .oc-stat strong { color: var(--text-primary); font-weight: 600; }
+.outcome-credit .oc-cta { color: var(--accent); font-size: 12.5px; font-weight: 500; }
+
+/* ============================================================
+   Compliance row — attention pulse for expiry moment
+   ============================================================ */
+.compliance-row.attention-pulse {
+  animation: compliancePulse 1800ms ease-out;
+}
+@keyframes compliancePulse {
+  0%   { background: var(--missing-soft); box-shadow: inset 3px 0 0 var(--missing); }
+  60%  { background: var(--missing-soft); box-shadow: inset 3px 0 0 var(--missing); }
+  100% { background: transparent;         box-shadow: inset 3px 0 0 transparent; }
+}
+
+/* ============================================================
+   Sidebar adviser badge (richer adviser display)
+   ============================================================ */
+.adviser-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text-secondary);
+}
+.adviser-chip .adviser-avatar {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg, #5B8DEF, #B879F5);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10.5px; font-weight: 700; color: white;
+  flex-shrink: 0;
+}
+.adviser-chip .adviser-name { color: var(--text-primary); font-weight: 500; }
+.adviser-chip .adviser-role { color: var(--text-muted); font-size: 12px; }
+
+/* ============================================================
+   Overview value-prop line
+   ============================================================ */
+.value-prop {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-card);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 12px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+.value-prop strong { color: var(--text-primary); font-weight: 600; }
+.value-prop svg { color: var(--accent); flex-shrink: 0; }

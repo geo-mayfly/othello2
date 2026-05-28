@@ -108,10 +108,10 @@ function Settings() {
       <div className="settings-section">
         <div className="t-section" style={{ marginBottom: 10 }}>Team &amp; roles</div>
         {[
-          { name: "R. Lee", role: "Operations · Admin", email: "r.lee@ewm.example" },
-          { name: "C. Halford", role: "Adviser", email: "c.halford@ewm.example" },
-          { name: "S. Patel", role: "Adviser", email: "s.patel@ewm.example" },
-          { name: "P. Mathieson", role: "Principal", email: "p.mathieson@ewm.example" },
+          { name: "Rachel Lee", role: "Operations · Admin", email: "rachel.lee@ewm.example" },
+          { name: "Catherine Halford", role: "Adviser · Senior", email: "catherine.halford@ewm.example" },
+          { name: "Sanjay Patel", role: "Adviser", email: "sanjay.patel@ewm.example" },
+          { name: "Peter Mathieson", role: "Principal", email: "peter.mathieson@ewm.example" },
         ].map((m, i) => (
           <div key={i} className="settings-row">
             <div className="sr-label">{m.name}<div className="sr-help">{m.email}</div></div>

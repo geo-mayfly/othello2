@@ -114,7 +114,7 @@ const FLOWS = [
   {
     id: "okafor_reverse_beat",
     title: "Compliance reverse beat",
-    subtitle: "Okafor — wholesale certificate expires, chase, renew",
+    subtitle: "Okafor — wholesale certificate expires today; without auto-chase, advice silently halts. Othello drafts the renewal, sends, and clears the flag.",
     badge: "liability story",
     steps: [
       { id: "expire_okafor",            label: "Wholesale certificate expires",  desc: "Dependent form un-completes; client back to Needs you",

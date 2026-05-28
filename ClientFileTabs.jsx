@@ -216,7 +216,7 @@ function FormsList({ client, flash }) {
                   className="form-picker-item"
                   onClick={() => {
                     dispatch({ type: "ADD_FORM_TO_CLIENT", clientId: client.id, formId: f.id });
-                    dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "R. Lee", desc: `Added ${f.short} to this client's required forms` } });
+                    dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "Rachel Lee", desc: `Added ${f.short} to this client's required forms` } });
                     setPickerOpen(false);
                   }}
                 >
@@ -274,11 +274,11 @@ function FormCardAction({ client, form, dispatch, runEvent }) {
       <div style={{ display: "flex", gap: 6 }}>
         <button className="btn btn-ghost" onClick={() => {
           dispatch({ type: "REMOVE_FORM_FROM_CLIENT", clientId: client.id, formId: form.formId });
-          dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "R. Lee", desc: `Dismissed ${FORMS[form.formId].short} — not required` } });
+          dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "Rachel Lee", desc: `Dismissed ${FORMS[form.formId].short} — not required` } });
         }}>Dismiss</button>
         <button className="btn btn-primary" onClick={() => {
           dispatch({ type: "UPDATE_FORM_STATUS", clientId: client.id, formId: form.formId, status: "awaiting" });
-          dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "R. Lee", desc: `Confirmed ${FORMS[form.formId].short} is required for this client` } });
+          dispatch({ type: "ADD_ACTIVITY", clientId: client.id, entry: { actor: "Rachel Lee", desc: `Confirmed ${FORMS[form.formId].short} is required for this client` } });
         }}>Confirm</button>
       </div>
     );

@@ -2,6 +2,14 @@
 // Othello — Client file (the detail surface — main demo stage)
 // ============================================================
 
+function adviserInitials(name) {
+  if (!name) return "?";
+  // "Catherine Halford" → "CH", "C. Halford" → "CH", "Sanjay Patel" → "SP"
+  const parts = name.replace(/\./g, "").split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 function ClientFile() {
   const { state, dispatch, runEvent } = useStore();
   const { selectedClientId, proc, fieldsFlash, formsFlash, clients } = state;
@@ -44,7 +52,13 @@ function ClientFile() {
             <span key={i} className="cf-chip">{m}</span>
           ))}
           <span style={{ marginLeft: "auto", display: "inline-flex", gap: 12, alignItems: "center" }}>
-            <span>Adviser <strong style={{ color: "var(--text-primary)" }}>{client.adviser}</strong></span>
+            <span className="adviser-chip">
+              <span className="adviser-avatar">{adviserInitials(client.adviser)}</span>
+              <span>
+                <span className="adviser-name">{client.adviser}</span>
+                <span className="adviser-role"> · Adviser</span>
+              </span>
+            </span>
             <span style={{ color: "var(--text-muted)" }}>·</span>
             <span>{client.lastActivity}</span>
           </span>
@@ -68,7 +82,13 @@ function ClientFile() {
 // Processing banner
 // ---------------------------------------------------------------
 function ProcessingBanner({ proc, queued }) {
-  const [expanded, setExpanded] = useState(false);
+  // Expand by default when a distribution beat is running, so the
+  // four destinations are visible without an extra click.
+  const hasDist = Array.isArray(proc.dist) && proc.dist.length > 0;
+  const [expanded, setExpanded] = useState(hasDist);
+  // Keep it expanded once a dist starts; it auto-closes when proc clears.
+  useEffect(() => { if (hasDist) setExpanded(true); }, [hasDist]);
+
   return (
     <div className="proc-banner">
       <div className="proc-dot"></div>
@@ -89,6 +109,22 @@ function ProcessingBanner({ proc, queued }) {
               </div>
             ))}
           </div>
+          {hasDist && (
+            <div className="dist-strip">
+              <div className="dist-title">Distribution & record-keeping</div>
+              {proc.dist.map((d) => (
+                <div key={d.id} className={`dist-step ${d.state}`}>
+                  <span className="dist-step-mark">
+                    {d.state === "done"
+                      ? <Icon name="check" size={11} style={{ color: "white" }} />
+                      : <Icon name={d.icon || "send"} size={11} />}
+                  </span>
+                  <span>{d.label}</span>
+                  <span className="dist-step-target">{d.target}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -320,6 +356,7 @@ function OutstandingSection({ client, runEvent }) {
 
   if (items.length === 0) {
     const fortlakeReady = deriveFormStatus(client, "fortlake_application") === "ready";
+    const allTerminal = confirmedForms.every(f => f.status === "confirmed" || f.status === "dispatched");
     return (
       <div className="cf-section">
         <div className="cf-section-title">Outstanding</div>
@@ -337,6 +374,7 @@ function OutstandingSection({ client, runEvent }) {
             <div className="t-secondary" style={{ marginTop: 4 }}>All required fields are in. Awaiting next form-side check.</div>
           )}
         </div>
+        {allTerminal && <OutcomeCredit client={client} />}
       </div>
     );
   }
@@ -362,6 +400,30 @@ function OutstandingSection({ client, runEvent }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------
+// Outcome credit — celebratory summary once every form has dispatched.
+// Shown inline at the bottom of the "nothing outstanding" empty state.
+// ---------------------------------------------------------------
+function OutcomeCredit({ client }) {
+  const terminal = (client.forms || []).filter(f => f.status === "confirmed" || f.status === "dispatched");
+  const { total: fieldsTotal } = countReadiness(client);
+  return (
+    <div className="outcome-credit">
+      <span className="oc-mark"><Icon name="shield-check" size={22} /></span>
+      <div>
+        <div className="oc-title">{client.name} · onboarded end-to-end</div>
+        <div className="oc-stats">
+          <span className="oc-stat"><strong>{fieldsTotal}</strong> fields resolved</span>
+          <span className="oc-stat"><strong>{terminal.length}</strong> form{terminal.length === 1 ? "" : "s"} lodged</span>
+          <span className="oc-stat">Othello time: <strong>~12 min</strong></span>
+          <span className="oc-stat" style={{ color: "var(--text-muted)" }}>(typical manual cycle: 2.5 hrs)</span>
+        </div>
+      </div>
+      <span className="oc-cta">Filed · audit logged</span>
     </div>
   );
 }
