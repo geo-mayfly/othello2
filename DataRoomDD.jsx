@@ -34,26 +34,31 @@ function ddAllDone(dd) { return DD_REVIEW_ITEMS.every(it => itemSatisfied(dd, it
 function DataRoomDD() {
   const { state, dispatch } = useStore();
   const dd = state.dataRoom.dd;
+  const docRef = useRef(null);
   if (!dd) return null;
-  const onCanvas = dd.phase === "review" || dd.phase === "finalised";
+  const finalised = dd.phase === "finalised";
+  const onCanvas = dd.phase === "review" || finalised;
 
   return (
     <div className="dr-shell">
       <div className="dr-dd-header">
-        <button className="btn btn-ghost" onClick={() => dispatch({ type: "DR_CLOSE_DD" })}>
-          <Icon name="chevron-left" size={14} /> Data Rooms
-        </button>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="dr-dd-title">{dd.name}</div>
+        <div className="dr-head-left">
+          <button className="dr-crumb" onClick={() => dispatch({ type: "DR_CLOSE_DD" })}>
+            <Icon name="chevron-left" size={13} /> Data Rooms
+          </button>
+          <div className="dr-head-titlerow">
+            <h1 className="dr-dd-title">{dd.name}</h1>
+            {!finalised && <PhasePill phase={dd.phase} />}
+          </div>
           <div className="dr-dd-sub">{DD_META.manager} · {DD_META.product} · {dd.requester}</div>
         </div>
-        <PhasePill phase={dd.phase} />
+        {finalised && <ExportActions docRef={docRef} />}
       </div>
 
       {dd.phase === "extracting" && <Extraction />}
       {dd.phase === "requirements" && <Requirements />}
       {dd.phase === "generating" && <GenerationAnim />}
-      {onCanvas && <ReviewLayout finalised={dd.phase === "finalised"} />}
+      {onCanvas && <ReviewLayout docRef={docRef} finalised={finalised} />}
     </div>
   );
 }
@@ -121,9 +126,16 @@ function Requirements() {
   const sec = SECTION_BY_ID[selected];
   return (
     <div className="dr-body-scroll">
-      <div className="dr-req-banner">
-        <Icon name="sparkle" size={15} />
-        <span><strong>{DD_ITEM_COUNT} requirements extracted across {DD_SECTIONS.length} sections.</strong> Excel platform review, Word checklist, PDF — any format in, the same requirements out. Refine a section with the chat agent, or process them all.</span>
+      <div className="dr-req-summary">
+        <div>
+          <div className="dr-req-h">Requirements extracted</div>
+          <div className="dr-req-subh">Review the items below and refine a section if needed, then process to draft the responses.</div>
+        </div>
+        <div className="dr-req-stats">
+          <div className="dr-req-stat"><span className="n">{DD_ITEM_COUNT}</span><span className="l">requirements</span></div>
+          <div className="dr-req-stat"><span className="n">{DD_SECTIONS.length}</span><span className="l">sections</span></div>
+          <div className="dr-req-stat"><span className="n">{DD_REVIEW_ITEMS.length}</span><span className="l">need input</span></div>
+        </div>
       </div>
       <div className="dr-req-grid">
         <div className="dr-req-list">
@@ -146,16 +158,16 @@ function Requirements() {
           <ol className="dr-req-itemlist">{sec.items.map(it => <li key={it.id}>{it.q}{it.flagInfo && <span className="pill attention dr-flag-pill"><Icon name="warning" size={10} /> {it.flagInfo.type === "validation" ? "validate" : "input"}</span>}</li>)}</ol>
           <div className="dr-refine">
             <div className="dr-refine-head"><Icon name="chat" size={13} /> Refine with the chat agent</div>
-            <div className="dr-refine-msg">Narrow scope, merge overlapping items or change tone here. Available in the full build.</div>
+            <div className="dr-refine-msg">Adjust the scope or wording for this section. Available in the full build.</div>
             <div className="dr-refine-input">
-              <input className="chat-input" placeholder="e.g. “tighten this to the fund only”…" disabled />
+              <input className="chat-input" placeholder="Refine this section…" disabled />
               <button className="btn btn-secondary" disabled>Send</button>
             </div>
           </div>
         </div>
       </div>
       <div className="dr-actionbar">
-        <span className="t-muted">Othello will compile references from the knowledge base and draft each section as an editable document.</span>
+        <span className="t-muted">Each section is drafted from the knowledge base. You can edit everything afterward.</span>
         <button className="btn btn-primary" onClick={() => dispatch({ type: "DR_SET_PHASE", phase: "generating" })}><Icon name="sparkle" size={14} /> Process</button>
       </div>
     </div>
@@ -202,10 +214,8 @@ function GenerationAnim() {
 // ---------------------------------------------------------------
 // Review / finalised — editable document + AI panel
 // ---------------------------------------------------------------
-function ReviewLayout({ finalised }) {
-  const { state, dispatch } = useStore();
-  const dd = state.dataRoom.dd;
-  const docRef = useRef(null);
+function ReviewLayout({ docRef, finalised }) {
+  const { dispatch } = useStore();
 
   // delegate clicks on inline reference tags → open the quick-view
   const onDocClick = (e) => {
@@ -218,7 +228,6 @@ function ReviewLayout({ finalised }) {
   return (
     <div className="dr-review-layout">
       <div className={`dr-doc-pane ${finalised ? "full" : ""}`} ref={docRef} onClick={onDocClick}>
-        {finalised && <ExportBar docRef={docRef} />}
         <div className="dr-doc">
           <div className="dr-doc-headline">
             <div className="dr-doc-h1">{DD_META.title}</div>
@@ -271,12 +280,17 @@ function ItemBlock({ item }) {
     <div className="dr-item">
       <div className="dr-item-q">
         {item.q}
-        {item.hero && <span className="dr-item-badge">hero</span>}
         {item.flagInfo && !resolved && <span className="pill attention dr-item-status"><Icon name="warning" size={10} /> {item.flagInfo.type === "validation" ? "validation required" : "input required"}</span>}
         {item.flagInfo && resolved && <span className="pill ready dr-item-status"><Icon name="check" size={10} /> {f && f.validated ? "validated" : "resolved"}</span>}
       </div>
       <EditableAnswer tokens={tokens} revision={useFinal ? "final" : "draft"} />
       {showTable && <CanvasTable table={item.table} />}
+      {item.image && (
+        <figure className="dr-figure" contentEditable={false}>
+          <img src={item.image.src} alt={item.image.caption} loading="lazy" />
+          <figcaption>{item.image.caption}</figcaption>
+        </figure>
+      )}
     </div>
   );
 }
@@ -330,7 +344,7 @@ function AIPanel({ docRef }) {
         ) : (
           <>
             <div className="dr-ai-title">Outstanding items <span className="pill attention" style={{ fontSize: 10 }}>{DD_REVIEW_ITEMS.filter(it => !itemSatisfied(dd, it)).length}</span></div>
-            <div className="dr-ai-sub">Resolve these to finalise. Select a section to act on it, or instruct the assistant below.</div>
+            <div className="dr-ai-sub">Items that still need a decision before you can finalise. Select one to act on it.</div>
             <div className="dr-ai-list">
               {DD_REVIEW_ITEMS.map(it => {
                 const ok = itemSatisfied(dd, it);
@@ -348,7 +362,7 @@ function AIPanel({ docRef }) {
             </div>
             <div className="dr-ai-finalise">
               <button className="btn btn-primary" disabled={!allDone} onClick={() => dispatch({ type: "DR_FINALISE" })}>
-                <Icon name="check" size={14} /> {allDone ? "Finalise generation" : `${DD_REVIEW_ITEMS.filter(it => !itemSatisfied(dd, it)).length} item(s) left`}
+                <Icon name="check" size={14} /> {allDone ? "Finalise document" : `${DD_REVIEW_ITEMS.filter(it => !itemSatisfied(dd, it)).length} item(s) left`}
               </button>
             </div>
           </>
@@ -445,18 +459,18 @@ function AIChat({ docRef, section, onAttach }) {
         [/Copia Investments/g, "Chester Asset Management Pty Ltd"],
         [/\bCopia\b/g, "Chester Asset Management Pty Ltd"],
       ]);
-      return `Done — I replaced ${n} reference${n === 1 ? "" : "s"} to Copia with “Chester Asset Management Pty Ltd” across the document. Review the highlighted sections and adjust any you'd like to revert.`;
+      return `Done. I replaced ${n} reference${n === 1 ? "" : "s"} to Copia with "Chester Asset Management Pty Ltd" across the document. Review the highlighted sections and revert anything you want to keep.`;
     }
     if (/(source|where.*from|reference|cite)/.test(lower)) {
-      return "Every answer cites its source — for example the firm-wide FUM figure comes from the Diversa IM Review, sheet 1.2.6. Click any reference tag in the document to open the source at the cited page.";
+      return "Every answer cites its source. For example, the firm-wide FUM figure comes from the Diversa IM Review, sheet 1.2.6. Click any reference tag to open the source at the cited page.";
     }
     if (/(shorten|concise|tighten|trim)/.test(lower)) {
-      return `In the full build I can rewrite ${section ? `the ${section.title} section` : "any section"} to a target length on instruction. For this demo, the live example is the global reference rename — try “change references to Copia to Chester Asset Management”.`;
+      return `In the full build I can rewrite ${section ? `the ${section.title} section` : "any section"} to a target length. For this demo the live example is the reference rename. Try "change references to Copia to Chester Asset Management".`;
     }
     if (section) {
-      return `Noted for the ${section.title} section. You can resolve its flagged items in the cards above, edit the text directly in the canvas, or attach a document with the paperclip.`;
+      return `Noted for the ${section.title} section. You can resolve its items in the cards above, edit the text directly, or attach a document with the paperclip.`;
     }
-    return "I can edit the whole document on instruction — try “change references to Copia to Chester Asset Management Pty Ltd”. Select a section to act on its flags, or attach a file with the paperclip.";
+    return 'I can edit the document on instruction. Try "change references to Copia to Chester Asset Management Pty Ltd", select a section to work on its items, or attach a file with the paperclip.';
   };
 
   const send = async (text) => {
@@ -467,7 +481,7 @@ function AIChat({ docRef, section, onAttach }) {
     const reply = respond(text);
     setThinking(false);
     setMsgs(m => [...m, { role: "bot", text: reply }]);
-    if (/replaced \d+ reference/.test(reply)) toast("Document updated — references renamed", "ready");
+    if (/replaced \d+ reference/.test(reply)) toast("Document updated · references renamed", "ready");
   };
 
   const chips = section
@@ -477,10 +491,10 @@ function AIChat({ docRef, section, onAttach }) {
   return (
     <div className="dr-ai-chat">
       <div className="dr-ai-chat-head">
-        <Icon name="sparkle" size={13} /> {section ? `Editing — ${section.title}` : "Edit the whole document"}
+        <Icon name="sparkle" size={13} /> {section ? `Editing: ${section.title}` : "Edit the whole document"}
       </div>
       <div className="dr-ai-chat-body" ref={bodyRef}>
-        {msgs.length === 0 && <div className="chat-msg-bot">{section ? `Ask me about the ${section.title} section, or resolve its items above.` : "Instruct me to edit the document — globally or section by section."}</div>}
+        {msgs.length === 0 && <div className="chat-msg-bot">{section ? `Ask about the ${section.title} section, or resolve its items above.` : "Instruct me to edit the document, across all sections or one at a time."}</div>}
         {msgs.map((m, i) => m.role === "user"
           ? <div key={i} className="chat-msg-user">{m.text}</div>
           : <div key={i} className="chat-msg-bot">{m.text}</div>)}
@@ -520,11 +534,11 @@ function FileUploadModal({ ctx, onClose }) {
     const anySync = list.some(f => f.sync);
     if (ctx.itemId === "Q4") {
       dispatch({ type: "DR_RESOLVE_INFO", itemId: "Q4", sync: anySync, kbDoc: anySync ? CHUBB_KB_DOC : null });
-      toast(`${list[0].name} added — insurance response completed`, "ready");
+      toast(`${list[0].name} added · insurance response completed`, "ready");
       if (anySync) setTimeout(() => toast("Synced to knowledge base · +1 document", "ready"), 450);
     } else if (ctx.itemId) {
       dispatch({ type: "DR_RESOLVE_INFO", itemId: ctx.itemId, sync: false });
-      toast(`${list[0].name} attached — item resolved`, "ready");
+      toast(`${list[0].name} attached · item resolved`, "ready");
       list.filter(f => f.sync).forEach((f, i) => dispatch({ type: "DR_KB_ADD", doc: genericDoc(f.name, i) }));
     } else {
       // chat attachment
@@ -582,25 +596,20 @@ function genericDoc(name, i) {
 // ---------------------------------------------------------------
 // Finalise & export
 // ---------------------------------------------------------------
-function ExportBar({ docRef }) {
+function ExportActions({ docRef }) {
   const { toast } = useStore();
   const [copied, setCopied] = useState(false);
   const copy = async () => {
-    let text = "";
     const doc = docRef?.current?.querySelector(".dr-doc");
-    if (doc) text = doc.innerText;
+    const text = doc ? doc.innerText : "";
     try { await navigator.clipboard.writeText(text); } catch (e) {}
     setCopied(true); toast("Completed document copied to clipboard", "ready");
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <div className="dr-export">
-      <div className="dr-export-icon"><Icon name="check" size={18} /></div>
-      <div style={{ flex: 1 }}>
-        <div className="t-card-title">Finalised — ready to share with the client</div>
-        <div className="t-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Edit any section inline before sending. Today's answers drew partly on the last questionnaire you completed — every DD you finish makes the next one faster.</div>
-      </div>
-      <button className="btn btn-secondary" onClick={copy}><Icon name="copy" size={14} /> {copied ? "Copied" : "Copy to clipboard"}</button>
+    <div className="dr-head-actions">
+      <span className="dr-head-status"><Icon name="check" size={13} /> Ready to share</span>
+      <button className="btn btn-secondary" onClick={copy}><Icon name="copy" size={14} /> {copied ? "Copied" : "Copy"}</button>
       <a className="btn btn-primary" href={DD_EXPORT_PDF} download><Icon name="download" size={14} /> Generate PDF</a>
     </div>
   );
