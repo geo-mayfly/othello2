@@ -135,16 +135,16 @@ const FORMS = {
   },
   ewm_direct_debit: {
     id: "ewm_direct_debit",
-    title: "EWM Direct Debit Request",
+    title: "Direct Debit Request",
     short: "Direct Debit Request",
     description: "Authorises the fund to debit the nominated bank account for the investment.",
     category: "Banking",
     status: "review",        // <-- mapping-in-review
     confirmedCount: 8,
     totalCount: 9,
-    source: "Proposed from EWM_DD_Request_v2.pdf · pending approval",
+    source: "Proposed from DD_Request_v2.pdf · pending approval",
     lastUpdated: "today",
-    sourcePlatform: "EWM",
+    sourcePlatform: "Othello",
     sections: [
       { title: "Authorisation", fields: ["investor.given_names","investor.surname","investor.residential_address","bank.institution","bank.bsb","bank.account_no","bank.account_name","investment.amount","bank.debit_authority"] },
     ],

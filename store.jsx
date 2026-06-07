@@ -19,8 +19,37 @@ const { useState, useEffect, useReducer, useRef, useCallback, useMemo, createCon
 // ---------------------------------------------------------------
 function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
 
+// Data Room module — standalone slice. Pre-baked, self-contained.
+function initialDataRoom() {
+  return {
+    kbDocs: deepClone(KB_DOCS),
+    kbFreeform: deepClone(KB_FREEFORM),
+    dataRooms: deepClone(DATAROOMS_SEED),
+    activeDdId: null,    // id of the open DD container (null = list view)
+    creating: false,     // inline "New due diligence" form open
+    chubbSynced: false,  // flag-A remediation synced the Chubb cert to the KB
+    dd: null,            // working state for the open DD container
+    docViewer: null,     // { docId, page?, sheet? } reference quick-view
+  };
+}
+
+// Build a DD working-state object. `complete` seeds a finished read-only DD.
+function makeDdState({ id, name, requester, complete = false }) {
+  return {
+    id, name, requester,
+    phase: complete ? "finalised" : "extracting",
+    questions: DD_QUESTIONS.map(q => ({
+      id: q.id,
+      status: complete ? "complete" : "pending",  // pending | streaming | complete | flagged
+      resolved: complete,
+      validated: complete,
+      auditNote: complete && q.flag === "validation" ? DD_RESPONSES[q.id].flag.suggestedNote : "",
+    })),
+  };
+}
+
 const initialState = () => ({
-  module: "overview",          // "overview" | "clients" | "library" | "sources" | "settings"
+  module: "overview",          // "overview" | "clients" | "library" | "sources" | "settings" | "knowledge_base" | "datarooms"
   selectedClientId: null,
   clientListFilter: "needs",   // "in_progress" | "needs" | "done"
   clientListQuery: "",
@@ -43,6 +72,7 @@ const initialState = () => ({
   formsFlash: {},              // {clientId: {formId: timestamp}}
   storyStep: 0,                // index in autoplay
   autoplay: false,
+  dataRoom: initialDataRoom(),
 });
 
 // ---------------------------------------------------------------
@@ -219,6 +249,70 @@ function reducer(state, action) {
     case "ADD_COMPLIANCE": {
       return { ...state, compliance: [...state.compliance.filter(c => c.clientId !== action.row.clientId), action.row] };
     }
+
+    // ---------------- Data Room module ----------------
+    case "DR_SET_CREATING":
+      return { ...state, dataRoom: { ...state.dataRoom, creating: action.creating } };
+
+    case "DR_CREATE_DD": {
+      const { listEntry } = action;
+      const dataRooms = [listEntry, ...state.dataRoom.dataRooms.filter(d => d.id !== listEntry.id)];
+      const dd = makeDdState({ id: listEntry.id, name: listEntry.name, requester: listEntry.requester });
+      return { ...state, dataRoom: { ...state.dataRoom, dataRooms, activeDdId: listEntry.id, creating: false, dd } };
+    }
+
+    case "DR_OPEN_DD": {
+      const entry = state.dataRoom.dataRooms.find(d => d.id === action.id);
+      // Re-opening the live DD keeps its working state; a seeded complete
+      // entry opens read-only fully finished.
+      let dd = state.dataRoom.dd;
+      if (!dd || dd.id !== action.id) {
+        dd = makeDdState({ id: action.id, name: entry?.name, requester: entry?.requester, complete: entry?.status === "complete" });
+      }
+      return { ...state, dataRoom: { ...state.dataRoom, activeDdId: action.id, dd } };
+    }
+
+    case "DR_CLOSE_DD":
+      return { ...state, dataRoom: { ...state.dataRoom, activeDdId: null } };
+
+    case "DR_SET_PHASE":
+      return { ...state, dataRoom: { ...state.dataRoom, dd: { ...state.dataRoom.dd, phase: action.phase } } };
+
+    case "DR_SET_Q_STATUS": {
+      const dd = state.dataRoom.dd;
+      const questions = dd.questions.map(q => q.id === action.qid ? { ...q, status: action.status } : q);
+      return { ...state, dataRoom: { ...state.dataRoom, dd: { ...dd, questions } } };
+    }
+
+    case "DR_RESOLVE_INFO": {
+      const dd = state.dataRoom.dd;
+      const questions = dd.questions.map(q => q.id === action.qid ? { ...q, resolved: true, status: "complete" } : q);
+      let kbDocs = state.dataRoom.kbDocs;
+      let chubbSynced = state.dataRoom.chubbSynced;
+      if (action.sync && !chubbSynced) {
+        kbDocs = [deepClone(CHUBB_KB_DOC), ...kbDocs];
+        chubbSynced = true;
+      }
+      return { ...state, dataRoom: { ...state.dataRoom, kbDocs, chubbSynced, dd: { ...dd, questions } } };
+    }
+
+    case "DR_VALIDATE": {
+      const dd = state.dataRoom.dd;
+      const questions = dd.questions.map(q => q.id === action.qid ? { ...q, validated: true, status: "complete", auditNote: action.auditNote } : q);
+      return { ...state, dataRoom: { ...state.dataRoom, dd: { ...dd, questions } } };
+    }
+
+    case "DR_FINALISE": {
+      const dd = state.dataRoom.dd;
+      const dataRooms = state.dataRoom.dataRooms.map(d =>
+        d.id === dd.id ? { ...d, status: "complete", done: DD_QUESTIONS.length, items: DD_QUESTIONS.length } : d);
+      return { ...state, dataRoom: { ...state.dataRoom, dataRooms, dd: { ...dd, phase: "finalised" } } };
+    }
+
+    case "DR_OPEN_DOC":
+      return { ...state, dataRoom: { ...state.dataRoom, docViewer: { docId: action.docId, page: action.page, sheet: action.sheet } } };
+    case "DR_CLOSE_DOC":
+      return { ...state, dataRoom: { ...state.dataRoom, docViewer: null } };
 
     case "RESET": return initialState();
 

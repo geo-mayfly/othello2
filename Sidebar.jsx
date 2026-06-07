@@ -12,6 +12,10 @@ function Sidebar() {
   const items = [
     { id: "clients",  icon: "people", label: "Clients", badge: needsCount > 0 ? needsCount : null },
     { id: "overview", icon: "gauge",  label: "Overview" },
+    { section: "Data Room" },
+    { id: "datarooms",      icon: "folders", label: "Data Rooms" },
+    { id: "knowledge_base", icon: "book",    label: "Knowledge Base" },
+    { section: "Workspace" },
     { id: "library",  icon: "docs",   label: "Forms library" },
     { id: "sources",  icon: "plug",   label: "Sources" },
     { id: "settings", icon: "gear",   label: "Settings" },
@@ -21,34 +25,33 @@ function Sidebar() {
     <div className={`sidebar ${navCollapsed ? "collapsed" : ""}`}>
       <div className="sidebar-top">
         {!navCollapsed ? (
-          <>
-            <div className="logo">
-              <Icon name="split-disc" size={22} />
-              <span>Othello</span>
-            </div>
-            <div style={{ marginLeft: "auto" }}>
-              <span className="tenant-chip">
-                <span className="tenant-chip-dot"></span>EWM
-              </span>
-            </div>
-          </>
+          <div className="logo">
+            <Icon name="split-disc" size={22} />
+            <span>Othello</span>
+          </div>
         ) : (
           <Icon name="split-disc" size={22} />
         )}
       </div>
 
       <div className="sidebar-modules">
-        {items.map(it => (
-          <button
-            key={it.id}
-            className={`nav-item ${module === it.id ? "active" : ""} ${it.badge ? "has-badge" : ""}`}
-            onClick={() => dispatch({ type: "SET_MODULE", module: it.id })}
-            title={navCollapsed ? it.label : undefined}
-          >
-            <Icon name={it.icon} className="ni-icon" />
-            {!navCollapsed && <span className="ni-label">{it.label}</span>}
-            {!navCollapsed && it.badge && <span className="ni-badge">{it.badge}</span>}
-          </button>
+        {items.map((it, i) => (
+          it.section ? (
+            !navCollapsed
+              ? <div key={`sec-${i}`} className="nav-section-label">{it.section}</div>
+              : <div key={`sec-${i}`} className="nav-section-divider" />
+          ) : (
+            <button
+              key={it.id}
+              className={`nav-item ${module === it.id ? "active" : ""} ${it.badge ? "has-badge" : ""}`}
+              onClick={() => dispatch({ type: "SET_MODULE", module: it.id })}
+              title={navCollapsed ? it.label : undefined}
+            >
+              <Icon name={it.icon} className="ni-icon" />
+              {!navCollapsed && <span className="ni-label">{it.label}</span>}
+              {!navCollapsed && it.badge && <span className="ni-badge">{it.badge}</span>}
+            </button>
+          )
         ))}
       </div>
 

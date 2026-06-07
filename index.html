@@ -17,8 +17,18 @@
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
+  <!-- pdf.js (CDN) — Data Room reference quick-view -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous"></script>
+  <script>
+    window.PDFJS_WORKER_SRC = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = window.PDFJS_WORKER_SRC;
+    }
+  </script>
+
   <!-- Data layer (plain JS, no JSX) -->
   <script src="data.js"></script>
+  <script src="dataroom-data.js"></script>
 
   <!-- Components / store (JSX, via Babel) -->
   <script type="text/babel" src="icons.jsx"></script>
@@ -34,6 +44,13 @@
   <script type="text/babel" src="SourcesSettings.jsx"></script>
   <script type="text/babel" src="Chat.jsx"></script>
   <script type="text/babel" src="DemoPanel.jsx"></script>
+
+  <!-- Data Room module (stand-alone) -->
+  <script type="text/babel" src="DataRoomKB.jsx"></script>
+  <script type="text/babel" src="DataRoomList.jsx"></script>
+  <script type="text/babel" src="DataRoomDD.jsx"></script>
+  <script type="text/babel" src="DataRoomDocViewer.jsx"></script>
+
   <script type="text/babel" src="App.jsx"></script>
 </body>
 </html>

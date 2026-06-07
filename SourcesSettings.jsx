@@ -292,7 +292,7 @@ function Settings() {
         <div className="t-section" style={{ marginBottom: 10 }}>Workspace</div>
         <div className="settings-row">
           <div className="sr-label">Workspace name</div>
-          <div>EWM <span className="t-muted" style={{ fontSize: 12 }}>(Example Wealth Management)</span></div>
+          <div>Othello</div>
         </div>
         <div className="settings-row">
           <div className="sr-label">Default tenant</div>
@@ -307,10 +307,10 @@ function Settings() {
       <div className="settings-section">
         <div className="t-section" style={{ marginBottom: 10 }}>Team &amp; roles</div>
         {[
-          { name: "Rachel Lee", role: "Operations · Admin", email: "rachel.lee@ewm.example" },
-          { name: "Catherine Halford", role: "Adviser · Senior", email: "catherine.halford@ewm.example" },
-          { name: "Sanjay Patel", role: "Adviser", email: "sanjay.patel@ewm.example" },
-          { name: "Peter Mathieson", role: "Principal", email: "peter.mathieson@ewm.example" },
+          { name: "Rachel Lee", role: "Operations · Admin", email: "rachel.lee@othello.example" },
+          { name: "Catherine Halford", role: "Adviser · Senior", email: "catherine.halford@othello.example" },
+          { name: "Sanjay Patel", role: "Adviser", email: "sanjay.patel@othello.example" },
+          { name: "Peter Mathieson", role: "Principal", email: "peter.mathieson@othello.example" },
         ].map((m, i) => (
           <div key={i} className="settings-row">
             <div className="sr-label">{m.name}<div className="sr-help">{m.email}</div></div>

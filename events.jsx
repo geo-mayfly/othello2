@@ -498,7 +498,7 @@ SCRIPTS.dispatch_form = async ({ dispatch, toast, wait, setProc, state }, opts =
     return;
   }
   dispatch({ type: "CLOSE_PREVIEW" });
-  const designation = formDef.sourcePlatform && formDef.sourcePlatform !== "—" ? formDef.sourcePlatform : "EWM";
+  const designation = formDef.sourcePlatform && formDef.sourcePlatform !== "—" ? formDef.sourcePlatform : "Othello";
   const adviserName = client.adviser || "Adviser";
 
   // Phase 1 — package and send. The proc-banner shows step-by-step.
@@ -524,7 +524,7 @@ SCRIPTS.dispatch_form = async ({ dispatch, toast, wait, setProc, state }, opts =
   setProc(clientId, "Awaiting confirmation…", steps);
   await wait(TIMINGS.awaitConfirm);
 
-  const refPrefix = designation.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "EWM";
+  const refPrefix = designation.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "OTH";
   const confRef = `${refPrefix}-${Math.floor(40000 + Math.random() * 9000)}`;
   dispatch({ type: "UPDATE_FORM_STATUS", clientId, formId, status: "confirmed", note: confRef });
 
@@ -906,7 +906,7 @@ SCRIPTS.add_dd_form = async ({ dispatch, toast, wait, setProc, state }) => {
   const cid = state().selectedClientId || "smith";
   dispatch({ type: "SELECT_CLIENT", id: cid });
   dispatch({ type: "ADD_FORM_TO_CLIENT", clientId: cid, formId: "ewm_direct_debit", status: "awaiting" });
-  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "Rachel Lee", desc: "Added EWM Direct Debit Request to required forms" } });
+  dispatch({ type: "ADD_ACTIVITY", clientId: cid, entry: { actor: "Rachel Lee", desc: "Added Direct Debit Request to required forms" } });
   toast("Direct Debit Request added · 1 field outstanding", "attention");
   setProc(cid, "Updating checklist · 1 new field required", []);
   await wait(800);

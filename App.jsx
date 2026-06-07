@@ -28,11 +28,14 @@ function AppShell() {
         {module === "library" && <FormsLibrary />}
         {module === "sources" && <Sources />}
         {module === "settings" && <Settings />}
+        {module === "knowledge_base" && <KnowledgeBase />}
+        {module === "datarooms" && <DataRooms />}
       </div>
 
       {/* overlays */}
       {previewForm && <FortlakePreview />}
       {fieldMapSlideoverId && <FieldMapSlideover />}
+      {state.dataRoom.docViewer && <DataRoomDocViewer />}
       <ResolveSlideover />
 
       {/* fixed-position bits */}
