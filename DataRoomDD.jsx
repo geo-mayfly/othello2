@@ -22,6 +22,15 @@ function tokensToHtml(tokens) {
 }
 const ITEM_SECTION = Object.fromEntries(DD_ALL_ITEMS.map(it => [it.id, it.sectionId]));
 const SECTION_BY_ID = Object.fromEntries(DD_SECTIONS.map(s => [s.id, s]));
+const QSECTION_BY_ID = Object.fromEntries(DD_QUESTIONNAIRE.map(s => [s.id, s]));
+
+// Resolve a knowledge-base doc id against the live KB (falls back to the
+// seed + the user-supplied Chubb certificate).
+function resolveKbDoc(kbDocs, id) {
+  return (kbDocs || []).find(d => d.id === id)
+    || KB_DOCS.find(d => d.id === id)
+    || (id === "chubb_combined" ? CHUBB_KB_DOC : null);
+}
 
 function itemSatisfied(dd, it) {
   const f = dd.flags[it.id];
@@ -37,7 +46,6 @@ function DataRoomDD() {
   const docRef = useRef(null);
   if (!dd) return null;
   const finalised = dd.phase === "finalised";
-  const onCanvas = dd.phase === "review" || finalised;
 
   return (
     <div className="dr-shell">
@@ -58,7 +66,8 @@ function DataRoomDD() {
       {dd.phase === "extracting" && <Extraction />}
       {dd.phase === "requirements" && <Requirements />}
       {dd.phase === "generating" && <GenerationAnim />}
-      {onCanvas && <ReviewLayout docRef={docRef} finalised={finalised} />}
+      {dd.phase === "review" && <QuestionnaireReview docRef={docRef} />}
+      {finalised && <ReviewLayout docRef={docRef} finalised={true} />}
     </div>
   );
 }
@@ -237,6 +246,244 @@ function ReviewLayout({ docRef, finalised }) {
         </div>
       </div>
       {!finalised && <AIPanel docRef={docRef} />}
+    </div>
+  );
+}
+
+// ===============================================================
+// Questionnaire review — the full questionnaire as a master panel,
+// with a contextual right-hand "sources" panel that opens when a
+// section is selected. The panel lists the knowledge-base documents
+// that feed the section and lets the user tag additional ones.
+// ===============================================================
+function QuestionnaireReview({ docRef }) {
+  const { state, dispatch } = useStore();
+  const dd = state.dataRoom.dd;
+  const selectedId = dd.selectedSectionId;
+  const selected = selectedId ? QSECTION_BY_ID[selectedId] : null;
+
+  // user-tagged docs, kept on the screen: { [sectionId]: [docId, …] }
+  const [tagged, setTagged] = useState({});
+  const tag   = (sec, id) => setTagged(t => ({ ...t, [sec]: Array.from(new Set([...(t[sec] || []), id])) }));
+  const untag = (sec, id) => setTagged(t => ({ ...t, [sec]: (t[sec] || []).filter(x => x !== id) }));
+
+  const select = (id) => dispatch({ type: "DR_SELECT_SECTION", sectionId: id });
+
+  // delegate clicks on inline reference tags → open the quick-view
+  const onDocClick = (e) => {
+    const refTag = e.target.closest && e.target.closest(".dr-tag");
+    if (!refTag) return;
+    e.preventDefault();
+    dispatch({ type: "DR_OPEN_DOC", docId: refTag.dataset.docid, page: refTag.dataset.page ? Number(refTag.dataset.page) : undefined, sheet: refTag.dataset.sheet || undefined });
+  };
+
+  return (
+    <div className="dr-review-layout">
+      <div className={`dr-doc-pane dr-q-pane ${selected ? "split" : ""}`} ref={docRef} onClick={onDocClick}>
+        <div className="dr-doc dr-q-doc">
+          <div className="dr-doc-headline">
+            <div className="dr-doc-h1">{DD_META.title}</div>
+            <div className="dr-doc-meta">{DD_META.manager} · {DD_META.product} · Draft for review</div>
+            <div className="dr-q-hintbar">
+              <Icon name="folders" size={13} /> Click any section to see the knowledge-base documents that feed it — and tag additional documents for that section.
+            </div>
+          </div>
+
+          {DD_QUESTIONNAIRE.map(s => (
+            <QSection key={s.id} section={s} selected={selectedId === s.id}
+                      onSelect={select} taggedCount={(tagged[s.id] || []).length} />
+          ))}
+
+          <div className="dr-q-actionbar">
+            <span className="t-muted">Full questionnaire · {DD_Q_COUNT} questions across {DD_QUESTIONNAIRE.length} sections · responses drafted from the knowledge base.</span>
+            <button className="btn btn-primary" onClick={() => dispatch({ type: "DR_FINALISE" })}><Icon name="check" size={14} /> Finalise responses</button>
+          </div>
+        </div>
+      </div>
+
+      {selected && (
+        <SourcePanel section={selected}
+                     tagged={tagged[selectedId] || []}
+                     onTag={(id) => tag(selectedId, id)}
+                     onUntag={(id) => untag(selectedId, id)}
+                     onClose={() => select(null)} />
+      )}
+    </div>
+  );
+}
+
+// A single questionnaire section in the master panel.
+function QSection({ section, selected, onSelect, taggedCount }) {
+  const srcCount = section.sources.length + taggedCount;
+  let lastSub = null;
+  return (
+    <div className={`dr-qsection ${selected ? "selected" : ""}`} id={`qsec-${section.id}`}>
+      <div className="dr-qsection-head" onClick={() => onSelect(selected ? null : section.id)}>
+        <div style={{ minWidth: 0 }}>
+          <div className="dr-qsection-title">{section.title}</div>
+          <div className="dr-qsection-intro">{section.intro}</div>
+        </div>
+        <div className="dr-qsection-head-right">
+          <span className="dr-qsection-srcs"><Icon name="folders" size={12} /> {srcCount} source{srcCount === 1 ? "" : "s"}</span>
+          <span className="dr-qsection-cta">{selected ? "Sources shown" : "View sources"} <Icon name="chevron-right" size={12} /></span>
+        </div>
+      </div>
+      <div className="dr-qsection-body">
+        {section.items.map((it, i) => {
+          const subHead = it.sub && it.sub !== lastSub ? it.sub : null;
+          if (it.sub) lastSub = it.sub;
+          return (
+            <React.Fragment key={i}>
+              {subHead && <div className="dr-q-subhead">{subHead}</div>}
+              <QItem item={it} />
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// A single question + drafted response.
+function QItem({ item }) {
+  const isBio = !item.n;
+  return (
+    <div className={`dr-q-item ${isBio ? "bio" : ""}`}>
+      <div className="dr-q-q">
+        {item.n ? <span className="dr-q-num">{item.n}</span> : null}
+        <span className="dr-q-text">{item.q}</span>
+      </div>
+      {item.note && <div className="dr-q-note">{item.note}</div>}
+      {item.a
+        ? <EditableAnswer tokens={item.a} revision="q" />
+        : <div className="dr-q-hint">{item.hint || "Open for the manager to complete — drafted from the section's sources."}</div>}
+      {item.table && <CanvasTable table={item.table} />}
+      {item.image && (
+        <figure className="dr-figure" contentEditable={false}>
+          <img src={item.image.src} alt={item.image.caption} loading="lazy" />
+          <figcaption>{item.image.caption}</figcaption>
+        </figure>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------
+// Right-hand contextual panel — suggested + tagged source documents
+// ---------------------------------------------------------------
+function SourcePanel({ section, tagged, onTag, onUntag, onClose }) {
+  const { state, dispatch, toast } = useStore();
+  const kbDocs = state.dataRoom.kbDocs;
+  const [adding, setAdding] = useState(false);
+
+  const suggested = section.sources
+    .map(s => ({ ...s, doc: resolveKbDoc(kbDocs, s.id) }))
+    .filter(s => s.doc);
+  const taggedDocs = tagged.map(id => resolveKbDoc(kbDocs, id)).filter(Boolean);
+  const presentIds = new Set([...section.sources.map(s => s.id), ...tagged]);
+
+  const openDoc = (d) => dispatch({
+    type: "DR_OPEN_DOC", docId: d.id,
+    page: d.kind === "pdf" ? 1 : undefined,
+    sheet: d.kind === "sheet" ? Object.keys(SHEET_SNIPPETS)[0] : undefined,
+  });
+
+  const onUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    files.forEach((f, i) => {
+      const doc = genericDoc(f.name, i);
+      dispatch({ type: "DR_KB_ADD", doc });
+      onTag(doc.id);
+    });
+    setAdding(false);
+    toast(`${files.length} document${files.length === 1 ? "" : "s"} added to the knowledge base · tagged to ${section.title}`, "ready");
+  };
+
+  return (
+    <div className="dr-src-panel">
+      <div className="dr-src-top">
+        <button className="dr-ai-back" onClick={onClose}><Icon name="chevron-left" size={13} /> Hide sources</button>
+        <div className="dr-src-title">{section.title}</div>
+        <div className="dr-src-sub">Knowledge-base documents Othello will reference when drafting this section.</div>
+      </div>
+
+      <div className="dr-src-scroll">
+        <div className="dr-src-label">Suggested documents <span className="t-muted">· {suggested.length}</span></div>
+        <div className="dr-src-list">
+          {suggested.map(s => <SrcCard key={s.id} doc={s.doc} feeds={s.feeds} onOpen={() => openDoc(s.doc)} />)}
+          {suggested.length === 0 && <div className="dr-ai-empty">No documents matched yet — tag one below.</div>}
+        </div>
+
+        {taggedDocs.length > 0 && (
+          <>
+            <div className="dr-src-label">Tagged for this section <span className="t-muted">· {taggedDocs.length}</span></div>
+            <div className="dr-src-list">
+              {taggedDocs.map(d => <SrcCard key={d.id} doc={d} tagged onOpen={() => openDoc(d)} onRemove={() => onUntag(d.id)} />)}
+            </div>
+          </>
+        )}
+
+        <button className="btn btn-secondary dr-src-addbtn" onClick={() => setAdding(a => !a)}>
+          <Icon name="plus" size={13} /> Tag additional documents
+        </button>
+        {adding && <TagDocsPicker presentIds={presentIds} onTag={onTag} onUpload={onUpload} />}
+      </div>
+    </div>
+  );
+}
+
+function SrcCard({ doc, feeds, tagged, onOpen, onRemove }) {
+  return (
+    <div className="dr-src-card" onClick={onOpen}>
+      <Icon name={docIcon(doc.kind)} size={15} className="dr-src-card-ic" />
+      <div className="dr-src-card-main">
+        <div className="dr-src-card-title">{doc.title}</div>
+        <div className="dr-src-card-meta">{doc.type}{doc.asAt && doc.asAt !== "—" ? ` · ${doc.asAt}` : ""}</div>
+        {feeds && <div className="dr-src-card-feeds">{feeds}</div>}
+      </div>
+      <div className="dr-src-card-side">
+        {doc.active && <span className="pill ready kb-active-pill"><span className="dot ready" /> Active</span>}
+        {doc.hero && !doc.active && <span className="pill accent kb-active-pill">Prior DD</span>}
+        {tagged && <button className="dr-src-remove" title="Remove from section" onClick={(e) => { e.stopPropagation(); onRemove(); }}><Icon name="x" size={12} /></button>}
+      </div>
+    </div>
+  );
+}
+
+function TagDocsPicker({ presentIds, onTag, onUpload }) {
+  const { state } = useStore();
+  const kbDocs = state.dataRoom.kbDocs;
+  const [q, setQ] = useState("");
+  const fileRef = useRef(null);
+  const candidates = kbDocs.filter(d =>
+    !presentIds.has(d.id) &&
+    (!q.trim() || `${d.title} ${d.type} ${d.desc || ""}`.toLowerCase().includes(q.toLowerCase())));
+
+  return (
+    <div className="dr-src-picker">
+      <input type="file" ref={fileRef} multiple style={{ display: "none" }} onChange={onUpload} />
+      <button className="dr-src-uploadrow" onClick={() => fileRef.current?.click()}>
+        <Icon name="upload" size={14} /> <span>Upload a new document…</span>
+      </button>
+      <div className="dr-src-picker-search">
+        <Icon name="search" size={13} />
+        <input className="cl-search" placeholder="Search the knowledge base…" value={q} onChange={e => setQ(e.target.value)} />
+      </div>
+      <div className="dr-src-picker-list">
+        {candidates.length === 0 && <div className="dr-src-picker-empty">No other documents match.</div>}
+        {candidates.map(d => (
+          <div key={d.id} className="dr-src-picker-row" onClick={() => onTag(d.id)}>
+            <Icon name={docIcon(d.kind)} size={14} className="dr-src-card-ic" />
+            <div className="dr-src-picker-main">
+              <div className="dr-src-picker-title">{d.title}</div>
+              <div className="dr-src-card-meta">{d.type}</div>
+            </div>
+            <span className="dr-src-picker-add"><Icon name="plus" size={13} /> Tag</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
