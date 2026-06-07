@@ -1882,3 +1882,97 @@ button.dr-chip:hover { background: var(--bg-elevated-2); color: var(--text-prima
 
 .dr-viewer-placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); padding: 40px; }
 .dr-viewer-placeholder svg { color: var(--text-muted); }
+
+/* ============================================================
+   Data Room — editable document + AI review panel (v2)
+   ============================================================ */
+.dr-shell { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dr-shell .dr-dd-header { margin: 0; padding: 14px 24px; border-bottom: 1px solid var(--border-subtle); }
+.dr-body-centered { flex: 1; min-height: 0; overflow-y: auto; display: flex; align-items: center; justify-content: center; }
+.dr-body-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 32px; }
+.dr-req-itemlist { margin: 12px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.7; }
+.dr-req-itemlist li { margin-bottom: 2px; }
+
+/* two-column review */
+.dr-review-layout { flex: 1; min-height: 0; display: flex; }
+.dr-doc-pane { flex: 1; min-width: 0; overflow-y: auto; padding: 24px 28px 80px; }
+.dr-doc-pane.full { padding-bottom: 120px; }
+.dr-doc { max-width: 900px; margin: 0 auto; }
+.dr-doc-headline { margin-bottom: 18px; }
+.dr-doc-h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+.dr-doc-meta { color: var(--text-secondary); font-size: 12.5px; margin-top: 4px; }
+
+/* section canvas */
+.dr-canvas { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--r-card); padding: 4px 22px 18px; margin-bottom: 16px; transition: box-shadow 150ms, border-color 150ms; animation: cardLand 450ms ease; }
+.dr-canvas.selected { border-color: var(--accent-line); box-shadow: 0 0 0 1px var(--accent-line), 0 8px 24px rgba(0,0,0,0.25); }
+.dr-canvas-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 0 10px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 12px; cursor: pointer; }
+.dr-canvas-title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.dr-canvas-intro { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+.dr-canvas-head-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.dr-canvas-select { font-size: 11px; color: var(--text-muted); padding: 3px 9px; border: 1px solid var(--border-default); border-radius: 999px; white-space: nowrap; }
+.dr-canvas.selected .dr-canvas-select { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+
+.dr-item { padding: 12px 0; }
+.dr-item + .dr-item { border-top: 1px solid var(--border-subtle); }
+.dr-item-q { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 7px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dr-item-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); border: 1px solid var(--accent-line); border-radius: 4px; padding: 0 5px; }
+.dr-item-status { font-size: 10px; padding: 1px 7px; }
+
+.dr-canvas-answer { font-size: 13.5px; line-height: 1.7; color: var(--text-primary); outline: none; border-radius: 6px; padding: 4px 8px; margin: 0 -8px; transition: background 120ms, box-shadow 120ms; cursor: text; }
+.dr-canvas-answer:hover { background: var(--bg-elevated); }
+.dr-canvas-answer:focus { background: var(--bg-elevated); box-shadow: inset 0 0 0 1px var(--accent-line); }
+
+/* inline reference tag */
+.dr-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; line-height: 1; padding: 1px 6px 1px 5px; margin: 0 1px; border-radius: 5px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); cursor: pointer; user-select: none; vertical-align: baseline; white-space: nowrap; }
+.dr-tag:hover { background: var(--accent); color: white; }
+.dr-tag .dr-tag-ic { flex-shrink: 0; }
+
+/* AI panel */
+.dr-ai-panel { width: 384px; flex-shrink: 0; border-left: 1px solid var(--border-default); background: var(--bg-surface); display: flex; flex-direction: column; min-height: 0; }
+.dr-ai-top { flex: 1 1 50%; min-height: 0; overflow-y: auto; padding: 16px; border-bottom: 1px solid var(--border-default); display: flex; flex-direction: column; }
+.dr-ai-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.dr-ai-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.45; }
+.dr-ai-secthead { margin-bottom: 8px; }
+.dr-ai-back { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--accent); padding: 4px 8px; border-radius: 6px; }
+.dr-ai-back:hover { background: var(--accent-soft); }
+.dr-ai-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.dr-ai-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid var(--border-default); border-radius: var(--r-card); cursor: pointer; }
+.dr-ai-item:hover { background: var(--bg-elevated); border-color: var(--accent-line); }
+.dr-ai-item.ok { opacity: 0.7; }
+.dr-ai-item-ic { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--attention-soft); color: var(--attention); }
+.dr-ai-item-ic.validation { background: var(--attention-soft); color: var(--attention); }
+.dr-ai-item-ic.ok { background: var(--ready-soft); color: var(--ready); }
+.dr-ai-item-title { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-ai-item-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.dr-ai-finalise { margin-top: auto; padding-top: 14px; }
+.dr-ai-finalise .btn { width: 100%; justify-content: center; }
+.dr-ai-cards { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.dr-ai-empty { font-size: 12.5px; color: var(--text-muted); padding: 12px; border: 1px dashed var(--border-default); border-radius: var(--r-card); }
+
+/* flag/input cards */
+.dr-fcard { border: 1px solid var(--attention); background: var(--attention-soft); border-radius: var(--r-card); padding: 12px; }
+.dr-fcard.resolved { border-color: transparent; background: var(--ready-soft); }
+.dr-fcard-head { font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dr-fcard-copy { font-size: 12px; color: var(--text-secondary); margin-top: 8px; line-height: 1.5; }
+.dr-fcard-note { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+.dr-fcard-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+/* chat (bottom half) */
+.dr-ai-chat { flex: 1 1 50%; min-height: 0; display: flex; flex-direction: column; }
+.dr-ai-chat-head { padding: 10px 14px; font-size: 12px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 7px; border-bottom: 1px solid var(--border-subtle); }
+.dr-ai-chat-head svg { color: var(--accent); }
+.dr-ai-chat-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.dr-ai-chat-input { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--border-subtle); }
+.dr-ai-chat-input .chat-input { flex: 1; }
+
+/* upload modal */
+.dr-upload { width: 540px; max-width: 92vw; background: var(--bg-surface); border-radius: var(--r-panel); box-shadow: var(--shadow-overlay); display: flex; flex-direction: column; overflow: hidden; }
+.dr-upload-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border-subtle); }
+.dr-upload-drop { margin: 18px; border: 1.5px dashed var(--border-default); border-radius: var(--r-card); padding: 28px; text-align: center; color: var(--text-secondary); cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: all 150ms; }
+.dr-upload-drop:hover, .dr-upload-drop.drag { border-color: var(--accent-line); background: var(--bg-elevated); }
+.dr-upload-drop svg { color: var(--text-muted); }
+.dr-upload-list { padding: 0 18px; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }
+.dr-upload-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid var(--border-default); border-radius: var(--r-card); font-size: 13px; }
+.dr-upload-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-upload-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; }
+.dr-upload-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--border-subtle); margin-top: 12px; }

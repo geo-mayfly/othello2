@@ -78,7 +78,7 @@ function CreateDd() {
       requester: requester.trim() || "Unbranded inbound request",
       status: "in_progress",
       due: "24 Jun 2026",
-      items: DD_QUESTIONS.length,
+      items: DD_ITEM_COUNT,
       done: 0,
       created: "today",
       uploaded: fileName,

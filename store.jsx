@@ -34,17 +34,22 @@ function initialDataRoom() {
 }
 
 // Build a DD working-state object. `complete` seeds a finished read-only DD.
+// Per-item review state lives in `flags` (keyed by item id) for the items
+// that carry a flag / input request.
 function makeDdState({ id, name, requester, complete = false }) {
-  return {
-    id, name, requester,
-    phase: complete ? "finalised" : "extracting",
-    questions: DD_QUESTIONS.map(q => ({
-      id: q.id,
-      status: complete ? "complete" : "pending",  // pending | streaming | complete | flagged
+  const flags = {};
+  for (const it of DD_REVIEW_ITEMS) {
+    flags[it.id] = {
       resolved: complete,
       validated: complete,
-      auditNote: complete && q.flag === "validation" ? DD_RESPONSES[q.id].flag.suggestedNote : "",
-    })),
+      auditNote: complete && it.flagInfo.suggestedNote ? it.flagInfo.suggestedNote : "",
+    };
+  }
+  return {
+    id, name, requester,
+    phase: complete ? "finalised" : "extracting",  // extracting | requirements | generating | review | finalised
+    selectedSectionId: null,
+    flags,
   };
 }
 
@@ -278,35 +283,40 @@ function reducer(state, action) {
     case "DR_SET_PHASE":
       return { ...state, dataRoom: { ...state.dataRoom, dd: { ...state.dataRoom.dd, phase: action.phase } } };
 
-    case "DR_SET_Q_STATUS": {
-      const dd = state.dataRoom.dd;
-      const questions = dd.questions.map(q => q.id === action.qid ? { ...q, status: action.status } : q);
-      return { ...state, dataRoom: { ...state.dataRoom, dd: { ...dd, questions } } };
-    }
+    case "DR_SELECT_SECTION":
+      return { ...state, dataRoom: { ...state.dataRoom, dd: { ...state.dataRoom.dd, selectedSectionId: action.sectionId } } };
 
     case "DR_RESOLVE_INFO": {
       const dd = state.dataRoom.dd;
-      const questions = dd.questions.map(q => q.id === action.qid ? { ...q, resolved: true, status: "complete" } : q);
+      const cur = dd.flags[action.itemId] || {};
+      const flags = { ...dd.flags, [action.itemId]: { ...cur, resolved: true } };
       let kbDocs = state.dataRoom.kbDocs;
       let chubbSynced = state.dataRoom.chubbSynced;
-      if (action.sync && !chubbSynced) {
-        kbDocs = [deepClone(CHUBB_KB_DOC), ...kbDocs];
-        chubbSynced = true;
+      if (action.sync && action.kbDoc) {
+        if (!kbDocs.some(d => d.id === action.kbDoc.id)) kbDocs = [deepClone(action.kbDoc), ...kbDocs];
+        if (action.kbDoc.id === "chubb_combined") chubbSynced = true;
       }
-      return { ...state, dataRoom: { ...state.dataRoom, kbDocs, chubbSynced, dd: { ...dd, questions } } };
+      return { ...state, dataRoom: { ...state.dataRoom, kbDocs, chubbSynced, dd: { ...dd, flags } } };
     }
 
     case "DR_VALIDATE": {
       const dd = state.dataRoom.dd;
-      const questions = dd.questions.map(q => q.id === action.qid ? { ...q, validated: true, status: "complete", auditNote: action.auditNote } : q);
-      return { ...state, dataRoom: { ...state.dataRoom, dd: { ...dd, questions } } };
+      const cur = dd.flags[action.itemId] || {};
+      const flags = { ...dd.flags, [action.itemId]: { ...cur, validated: true, auditNote: action.auditNote } };
+      return { ...state, dataRoom: { ...state.dataRoom, dd: { ...dd, flags } } };
     }
 
     case "DR_FINALISE": {
       const dd = state.dataRoom.dd;
       const dataRooms = state.dataRoom.dataRooms.map(d =>
-        d.id === dd.id ? { ...d, status: "complete", done: DD_QUESTIONS.length, items: DD_QUESTIONS.length } : d);
-      return { ...state, dataRoom: { ...state.dataRoom, dataRooms, dd: { ...dd, phase: "finalised" } } };
+        d.id === dd.id ? { ...d, status: "complete", done: DD_ITEM_COUNT, items: DD_ITEM_COUNT } : d);
+      return { ...state, dataRoom: { ...state.dataRoom, dataRooms, dd: { ...dd, phase: "finalised", selectedSectionId: null } } };
+    }
+
+    case "DR_KB_ADD": {
+      let kbDocs = state.dataRoom.kbDocs;
+      if (!kbDocs.some(d => d.id === action.doc.id)) kbDocs = [deepClone(action.doc), ...kbDocs];
+      return { ...state, dataRoom: { ...state.dataRoom, kbDocs } };
     }
 
     case "DR_OPEN_DOC":

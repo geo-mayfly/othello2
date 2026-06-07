@@ -289,6 +289,209 @@ const DD_RESPONSES = {
 // The pre-built export artefact (the populated questionnaire as PDF).
 const DD_EXPORT_PDF = "dataroom/docs/Sample DD Questionnaire - Populated (POC Output).pdf";
 
+// ---------------------------------------------------------------
+// Sectioned questionnaire (Quilla-style). The generated output is a
+// multi-section editable document; each section is its own canvas so
+// validation / input requests link to individual sections.
+//
+// Answer `content` is a token array: strings (editable prose) and
+// { r: {label, docId, page?, sheet?} } inline reference tags. Items may
+// carry a `flag` (information request / validation) or `input` request,
+// and flagged items may swap to `contentFinal` (+ optional `table`)
+// once resolved.
+// ---------------------------------------------------------------
+const REF = (label, docId, opts = {}) => ({ r: { label, docId, ...opts } });
+
+const DD_SECTIONS = [
+  {
+    id: "business", title: "Business",
+    intro: "Applies to the investment manager with direct responsibility for investment decision-making.",
+    items: [
+      { id: "biz_inception", q: "Business inception date", content: [
+        "Chester Asset Management was formed in 2017. The Chester High Conviction Fund (CHCF) launched in April 2017, run on the same basis as the predecessor SGH Australia Plus Fund (a 3.5-year track record). Lead Portfolio Manager Rob Tucker has managed money on the same approach since 2005, including five years running the HSBC Australian Country Funds from Hong Kong." ] },
+
+      { id: "Q2", hero: true, q: "Business ownership and structure", content: [
+        "Chester Asset Management Pty Ltd is a boutique Australian equities manager established in April 2017 by Rob Tucker and Anthony Kavanagh. The business is 100% employee-owned by its three Portfolio Managers — Rob Tucker, Anthony Kavanagh and Luke Howard — with no external or institutional shareholders, and no changes to the ownership structure are planned",
+        REF("Diversa · sheet 2.1.4", "diversa", { sheet: "2.1.4" }),
+        ". CAM outsources non-core functions by design: Copia Investment Partners Ltd provides Responsible Entity, distribution and administration services for the Chester High Conviction Fund, leaving the five-person investment team focused solely on portfolio management",
+        REF("FSC CHCF pp.23–26", "fsc_chcf", { page: 23 }),
+        "." ] },
+
+      { id: "biz_changes", q: "Has ownership or structure changed in the last 5 years?", content: [
+        "No changes to business ownership or structure over the last five years. The business remains well-funded and committed to further growth." ] },
+
+      { id: "Q5", hero: true, flag: "validation", q: "Total firm-wide FUM (Firm Wide, in AUD)",
+        content: [
+          "Total firm-wide FUM was A$2,234.43 million as at 31 December 2025. Australian equities is the firm's sole asset class. Three-year history: A$933.82m (31 Dec 2023); A$1,341.85m (31 Dec 2024); A$2,234.43m (31 Dec 2025)",
+          REF("Diversa · sheet 1.2.6", "diversa", { sheet: "1.2.6" }),
+          "." ],
+        contentFinal: [
+          "Total firm-wide FUM was A$2,310 million as at 31 May 2026 (manually confirmed). Australian equities is the firm's sole asset class. Recent history: A$933.82m (31 Dec 2023); A$1,341.85m (31 Dec 2024); A$2,234.43m (31 Dec 2025)",
+          REF("Diversa · sheet 1.2.6", "diversa", { sheet: "1.2.6" }),
+          "." ],
+        flagInfo: {
+          type: "validation", title: "Validation required — currency check",
+          copy: "Drafted from the most recent source in the knowledge base (Diversa IM Review, FUM as at 31 December 2025). The questionnaire requests data as at 28 February or 31 March 2026, which post-dates every available source. Confirm the current figure or upload a more recent FUM report before finalising.",
+          suggestedNote: "Confirmed with Copia ops — A$2.31bn as at 31 May 2026",
+        } },
+
+      { id: "biz_strategy", q: "Is the business a single-strategy business?", content: [
+        "CAM is a boutique Australian equities manager applying a consistent, high-conviction philosophy across its offering — effectively a single-strategy business with variations around the same core approach. It manages three products: Chester High Conviction (retail, all-cap, led by Rob Tucker); Chester Mid-Cap (mandate, same philosophy, led by Rob Tucker); and Chester Opportunities (wholesale, small-cap, led by Anthony Kavanagh)." ] },
+    ],
+  },
+
+  {
+    id: "compliance", title: "Licensing & Compliance",
+    intro: "Licensing, regulatory standing and governance of the manager and Responsible Entity.",
+    items: [
+      { id: "Q1", hero: true, q: "AFSL / Corporate Authorised Representative & special conditions", content: [
+        "Chester Asset Management Pty Ltd (CAM) operates as a Corporate Authorised Representative of Copia Investment Partners Ltd (ABN 22 092 872 056), holder of Australian Financial Services Licence No. 229316",
+        REF("2 Copia AFSL.pdf", "copia_afsl", { page: 1 }),
+        ". Copia also acts as Responsible Entity for the Chester High Conviction Fund. A copy of the licence is attached. The AFSL contains no special conditions beyond those standard for licensees of its class; authorisations cover dealing in, and advising on, interests in managed investment schemes and operating registered schemes",
+        REF("FSC CHCF p.1", "fsc_chcf", { page: 1 }),
+        ". Copia oversees CAM's authorised-representative activities under its licensee monitoring and supervision program." ] },
+
+      { id: "reg_standing", q: "Regulatory standing", content: [
+        "No ASIC enforceable undertakings, reportable breaches or non-routine regulator interactions in the past five years",
+        REF("Diversa · Q2.5.4", "diversa", { sheet: "2.1.4" }),
+        "." ] },
+
+      { id: "governance", q: "Governance & board oversight", content: [
+        "Chester's governance, risk and compliance frameworks — including the internal-controls environment — are overseen by the Copia (CIPL) Board: Bruce Loveday (Chairman), Sam Cole (Director), Sally McDow (Director) and Michael Voskresensky (Company Secretary). No members of the investment team have operational duties; the front-office function operates independently of the back office, which is provided by the Responsible Entity." ] },
+
+      { id: "controls", q: "Internal controls assurance (GS007)", content: [
+        "Independently assured under GS007 / ASAE 3402 Type 2 for both Copia and Chester for FY2025, each with a signed audit opinion",
+        REF("Copia GS007 2025", "gs007_copia", { page: 1 }),
+        REF("Chester GS007 2025", "gs007_chester", { page: 1 }),
+        "." ] },
+    ],
+  },
+
+  {
+    id: "people", title: "People",
+    intro: "The investment manager and team with direct responsibility for investment decision-making.",
+    items: [
+      { id: "headcount", q: "Business headcount and change over three years", content: [
+        "A five-person investment team (5 in 2025, 5 in 2024, 3 — briefly 4 — in 2023). All five are investment professionals; operations, distribution, marketing and administration are provided by Copia, which employs 23 staff across Victoria, New South Wales and Queensland." ] },
+
+      { id: "key_staff", input: "upload", q: "Key investment staff & biographies", content: [
+        "Rob Tucker — Managing Director & Portfolio Manager (26 years' industry experience). Anthony Kavanagh — Portfolio Manager (16 years). Luke Howard — Portfolio Manager. All three are based in Melbourne and are co-owners of the business",
+        REF("Fund Manager bios.docx", "bios"),
+        REF("FSC CHCF pp.23–26", "fsc_chcf", { page: 23 }),
+        "." ],
+        flagInfo: {
+          type: "upload", optional: true, title: "Bios attachment requested",
+          copy: "The questionnaire asks for full biographies as an attachment. Attach the bios document for Tucker, Kavanagh and Howard, or confirm the summary above is sufficient.",
+          missingFile: "20250306 Fund Manager bios Chester.docx",
+        } },
+
+      { id: "rem", q: "Remuneration & alignment", content: [
+        "Portfolio Managers are remunerated through a base salary plus a performance component tied to the investment outcomes of the Fund. Alignment with investors is reinforced by meaningful co-investment in the Fund by the investment team and by 100% employee ownership of the business." ] },
+
+      { id: "succession", q: "Succession & key-person risk", content: [
+        "Key-person risk is mitigated across the three Portfolio Managers, who share the same philosophy and process; each strategy has a designated back-up decision-maker. Succession planning is in place for the key investment figureheads." ] },
+    ],
+  },
+
+  {
+    id: "process", title: "Investment process & philosophy",
+    intro: "Investment philosophy, research and portfolio-construction approach for the product.",
+    items: [
+      { id: "Q3", hero: true, q: "Investment philosophy (as it relates to this product)", content: [
+        "Chester's philosophy is grounded in the view that equity markets are not perfectly efficient, and that disciplined fundamental research can exploit mispricing over the medium term. For the Chester High Conviction Fund this is expressed through the team's Quality–Valuation–Edge (QVE) framework",
+        REF("FSC CHCF · Q13.2 (pp.2–3)", "fsc_chcf", { page: 2 }),
+        ": each position must demonstrate business quality (assessed across operating, financial and corporate-governance risk), trade at a discount to assessed intrinsic value, and offer an identifiable analytical edge not reflected in consensus. The Fund is benchmark-unaware and concentrated — 25 to 40 stocks drawn primarily from the S&P/ASX 300, with up to 10% in non-index (pre-IPO) names and up to 20% cash — and targets outperformance of the S&P/ASX 300 Accumulation Index of 5% p.a. over rolling three-year periods, with expected tracking error of 5–10%",
+        REF("FSC CHCF · Q13.7 (pp.4–8)", "fsc_chcf", { page: 4 }),
+        ". Equal emphasis is placed on minimising capital drawdown: the team treats avoidance of permanent capital loss as the most reliable driver of long-term outperformance. The approach has been applied consistently since the Fund's inception in April 2017 — and by lead Portfolio Manager Rob Tucker on the same basis since 2005." ] },
+
+      { id: "style", q: "Overarching style", content: [
+        "High-conviction, active, with a flexible style bias. The Fund's emphasis on free-cash-flow generation gives it generally growth attributes, but valuation support must always be evident to ensure an appropriate margin of safety. Chester will also exploit more contrarian ideas where the market has mispriced companies by extrapolating a poor near-term outlook." ] },
+
+      { id: "research", q: "Research process & idea generation", content: [
+        "Research is conducted in-house. Ideas are generated through screening to narrow the investable universe and bottom-up fundamental research against the QVE framework, supported by global, regional and sector context. A devil's-advocate process challenges positions when analysts present ideas." ] },
+
+      { id: "sizing", q: "Position sizing & portfolio construction", content: [
+        "The portfolio is concentrated at 25–40 holdings, sized by conviction and QVE score rather than benchmark weight, with up to 10% in non-index (pre-IPO) names and up to 20% cash",
+        REF("FSC CHCF · Q13.7 (pp.4–8)", "fsc_chcf", { page: 4 }),
+        ". Analysts prepare downside scenarios at the stock level, and positions that fall materially are re-underwritten against the original thesis." ] },
+
+      { id: "benchmark_aware", q: "Is the strategy benchmark-aware?", content: [
+        "The strategy is benchmark-unaware. The S&P/ASX 300 is used as a reference for performance measurement, not as a constraint on portfolio construction." ] },
+    ],
+  },
+
+  {
+    id: "performance", title: "Performance & Portfolio",
+    intro: "Benchmark, objectives, fees and capacity for the product.",
+    items: [
+      { id: "perf_benchmark", q: "Performance benchmark", content: ["S&P/ASX 300 Accumulation Index."] },
+      { id: "return_obj", q: "Return objective", content: [
+        "To outperform the S&P/ASX 300 Accumulation Index by 5% p.a. (before fees) over rolling three-year periods",
+        REF("FSC CHCF · Q13.4 (p.3)", "fsc_chcf", { page: 3 }), "." ] },
+      { id: "risk_obj", q: "Risk objective", content: [
+        "No formal risk objective; the Fund is designed for investors seeking to grow wealth while preserving capital, with expected tracking error of 5–10%." ] },
+      { id: "fees", q: "Fee structure", content: [
+        "Base management fee of 0.95% p.a. A performance fee of 15% applies to outperformance above the benchmark, accrued daily and payable quarterly, subject to a high-water mark (estimated at ~0.45% p.a. based on the five-year average)." ] },
+      { id: "capacity", input: "validation", q: "Strategy capacity", content: [
+        "Estimated capacity is approximately A$2.9 billion for the retail strategy. Capacity was last reviewed in March 2026." ],
+        flagInfo: {
+          type: "validation", title: "Confirm capacity figure",
+          copy: "Capacity (~A$2.9bn, retail) was last reviewed in March 2026. Confirm it remains current for this response, or update it.",
+          suggestedNote: "Confirmed current — capacity ~A$2.9bn (retail), reviewed Mar 2026",
+        } },
+      { id: "derivatives", q: "Use of derivatives", content: [
+        "The Fund does not invest in derivatives and is not geared." ] },
+    ],
+  },
+
+  {
+    id: "operations", title: "Operations & Risk",
+    intro: "Insurance, service providers, risk controls and continuity.",
+    items: [
+      { id: "Q4", hero: true, flag: "info", q: "Certificates of currency for each policy of insurance",
+        content: [
+          "The Manager maintains the following insurance program, placed with Chubb Insurance Australia Ltd: Professional Indemnity $10m; Directors & Officers $10m; Electronic & Computer Crime $2m; Fraud $20m; Cybersecurity $2m. A current Certificate of Currency is held for the Cybersecurity policy (expiry 14 September 2026)",
+          REF("5. Copia Cyber COC 2025.pdf", "cyber_coc", { page: 1 }),
+          "." ],
+        contentFinal: [
+          "The Manager maintains the following insurance program, placed with Chubb Insurance Australia Ltd. Certificates of currency for all five policies are attached",
+          REF("Chubb Combined CoC 2026.pdf", "chubb_combined", { page: 1 }),
+          "." ],
+        table: {
+          head: ["Policy", "Insurer", "Limit", "Expiry"],
+          rows: [
+            ["Professional Indemnity", "Chubb Insurance Australia Ltd", "$10m", "26 Oct 2026"],
+            ["Directors & Officers", "Chubb Insurance Australia Ltd", "$10m", "26 Oct 2026"],
+            ["Electronic & Computer Crime", "Chubb Insurance Australia Ltd", "$2m", "14 Sep 2026"],
+            ["Fraud", "Chubb Insurance Australia Ltd", "$20m", "26 Oct 2026"],
+            ["Cybersecurity", "Chubb Insurance Australia Ltd", "$2m", "14 Sep 2026"],
+          ],
+        },
+        flagInfo: {
+          type: "info", title: "Additional information required",
+          copy: "The knowledge base contains a Certificate of Currency for the Cybersecurity policy only (5. Copia Cyber COC 2025 - External Version.pdf). Certificates for the Professional Indemnity, Directors & Officers, Electronic & Computer Crime and Fraud policies are not in the knowledge base. Upload the certificates to complete this response.",
+          missingFile: "Chubb Combined Certificate of Currency 2026.pdf",
+        } },
+
+      { id: "providers", q: "Key service providers", content: [
+        "Responsible Entity: Copia Investment Partners Ltd. Custodian: State Street (master custodian) and HSBC (sub-custodian). Fund auditor: EY." ] },
+
+      { id: "risk_controls", q: "Risk controls & oversight", content: [
+        "Risk is controlled through stock, sector and cash limits, with no leverage. Portfolio risk and compliance are overseen by Copia's risk and compliance function independently of the investment team; stress tests and scenario analysis are applied to the portfolio periodically." ] },
+
+      { id: "bcp", q: "Business continuity & disaster recovery", content: [
+        "A documented Business Continuity and Disaster Recovery plan is maintained as part of the firm's policy framework",
+        REF("BCP & DR Plan", "pol_bcp"),
+        "." ] },
+    ],
+  },
+];
+
+// Flat helpers
+const DD_ALL_ITEMS = DD_SECTIONS.flatMap(s => s.items.map(it => ({ ...it, sectionId: s.id, sectionTitle: s.title })));
+const DD_REVIEW_ITEMS = DD_ALL_ITEMS.filter(it => it.flagInfo); // items needing review/input
+const DD_ITEM_COUNT = DD_ALL_ITEMS.length;
+
 window.KB_DOCS = KB_DOCS;
 window.CHUBB_KB_DOC = CHUBB_KB_DOC;
 window.KB_FREEFORM = KB_FREEFORM;
@@ -298,4 +501,8 @@ window.DATAROOMS_SEED = DATAROOMS_SEED;
 window.DD_META = DD_META;
 window.DD_QUESTIONS = DD_QUESTIONS;
 window.DD_RESPONSES = DD_RESPONSES;
+window.DD_SECTIONS = DD_SECTIONS;
+window.DD_ALL_ITEMS = DD_ALL_ITEMS;
+window.DD_REVIEW_ITEMS = DD_REVIEW_ITEMS;
+window.DD_ITEM_COUNT = DD_ITEM_COUNT;
 window.DD_EXPORT_PDF = DD_EXPORT_PDF;
