@@ -244,64 +244,96 @@ function Requirements() {
 function itemPlainText(item) {
   return (item.content || []).map(t => (typeof t === "string" ? t : (t.r ? t.r.label : ""))).join("");
 }
+const GEN_INDEX = Object.fromEntries(DD_ALL_ITEMS.map((it, i) => [it.id, i]));
 
 // A finished answer — memoised so completed cards aren't re-parsed on every
 // keystroke tick while later answers are still streaming in.
 const StreamDoneCard = React.memo(function StreamDoneCard({ item, dd }) {
   return (
-    <div className="dr-qcanvas dr-stream-card">
+    <div className="dr-qcanvas dr-stream-card done">
       <div className="dr-qcanvas-head"><div className="dr-qcanvas-q">{item.q}</div></div>
       <div className="dr-qedit" dangerouslySetInnerHTML={{ __html: itemToHtml(item, dd) }} />
     </div>
   );
 });
 
+// A not-yet-drafted answer — heading is shown immediately, body is a shimmer.
+const StreamPendingCard = React.memo(function StreamPendingCard({ item }) {
+  return (
+    <div className="dr-qcanvas dr-stream-card pending">
+      <div className="dr-qcanvas-head"><div className="dr-qcanvas-q">{item.q}</div></div>
+      <div className="dr-qedit dr-qpending"><span className="dr-skeleton-line" /><span className="dr-skeleton-line" /><span className="dr-skeleton-line short" /></div>
+    </div>
+  );
+});
+
+// The right-hand panel during generation — present from the start, empty state.
+function AIPanelEmpty() {
+  return (
+    <div className="dr-ai-panel">
+      <div className="dr-ai-top">
+        <div className="dr-ai-title">Outstanding items</div>
+        <div className="dr-ai-sub">Questions that need a decision will appear here once the draft is ready.</div>
+        <div className="dr-ai-genwait"><span className="dr-stream-spin" /><span>Drafting responses…</span></div>
+      </div>
+      <div className="dr-ai-chat">
+        <div className="dr-ai-chat-head"><Icon name="sparkle" size={13} /> Edit the whole document</div>
+        <div className="dr-ai-chat-body"><div className="chat-msg-bot">I'll be ready once the draft is generated — you'll be able to edit any answer or ask me to make changes.</div></div>
+        <div className="dr-ai-chat-input">
+          <button className="btn btn-ghost btn-icon" disabled><Icon name="upload" size={15} /></button>
+          <input className="chat-input" placeholder="Generating…" disabled />
+          <button className="btn btn-primary btn-icon" disabled><Icon name="send" size={14} /></button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Generation() {
   const { state, dispatch } = useStore();
   const dd = state.dataRoom.dd;
   const speed = state.speed || 1;
-  const [completed, setCompleted] = useState(0);
-  const [typing, setTyping] = useState({ index: 0, text: "" });
+  const [completed, setCompleted] = useState(0);       // # of answers fully drafted
+  const [typing, setTyping] = useState({ index: -1, text: "" });
   const activeRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
     const wait = (ms) => new Promise(r => setTimeout(r, ms / speed));
     (async () => {
-      await wait(350);
+      await wait(700); // let the full skeleton land before drafting begins
       for (let i = 0; i < DD_ALL_ITEMS.length; i++) {
         if (cancelled) return;
         const full = itemPlainText(DD_ALL_ITEMS[i]);
-        const step = Math.max(4, Math.ceil(full.length / 8));
+        const step = Math.max(2, Math.ceil(full.length / 14));
         setTyping({ index: i, text: "" });
-        await wait(70);
+        await wait(140);
         for (let c = step; c < full.length; c += step) {
           if (cancelled) return;
           setTyping({ index: i, text: full.slice(0, c) });
-          await wait(22);
+          await wait(32);
         }
         if (cancelled) return;
         setTyping({ index: i, text: full });
-        await wait(60);
+        await wait(130);
         setCompleted(i + 1);
-        await wait(45);
+        await wait(90);
       }
       if (cancelled) return;
-      await wait(550);
+      await wait(750);
       dispatch({ type: "DR_SET_PHASE", phase: "review" });
     })();
     return () => { cancelled = true; };
   }, []);
 
-  // keep the answer that's currently being written in view
-  useEffect(() => { if (activeRef.current) activeRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [typing.index]);
+  // follow the answer currently being written
+  useEffect(() => { if (activeRef.current) activeRef.current.scrollIntoView({ behavior: "smooth", block: "center" }); }, [typing.index]);
 
   const doneAll = completed >= DD_ALL_ITEMS.length;
-  const visibleCount = Math.min(typing.index + 1, DD_ALL_ITEMS.length);
 
   return (
     <div className="dr-review-layout">
-      <div className="dr-doc-pane full">
+      <div className="dr-doc-pane">
         <div className="dr-stream-status">
           {!doneAll && <span className="dr-stream-spin" />}
           <span>{doneAll ? "Draft complete — opening for review…" : "Drafting responses from the knowledge base…"}</span>
@@ -311,32 +343,30 @@ function Generation() {
             <div className="dr-doc-h1">{DD_META.title}</div>
             <div className="dr-doc-meta">{DD_META.manager} · {DD_META.product} · Drafting…</div>
           </div>
-          {DD_ALL_ITEMS.slice(0, visibleCount).map((item, i) => {
-            const sec = SECTION_BY_ID[item.sectionId];
-            const header = i === 0 || DD_ALL_ITEMS[i - 1].sectionId !== item.sectionId;
-            return (
-              <React.Fragment key={item.id}>
-                {header && (
-                  <div className="dr-group-head dr-stream-group">
-                    <div>
-                      <div className="dr-group-title">{sec.title}</div>
-                      <div className="dr-group-intro">{sec.intro}</div>
-                    </div>
-                  </div>
-                )}
-                {i < completed ? (
-                  <StreamDoneCard item={item} dd={dd} />
-                ) : (
-                  <div className="dr-qcanvas dr-stream-card" ref={activeRef}>
+          {DD_SECTIONS.map(sec => (
+            <div className="dr-group" key={sec.id}>
+              <div className="dr-group-head dr-stream-group">
+                <div>
+                  <div className="dr-group-title">{sec.title}</div>
+                  <div className="dr-group-intro">{sec.intro}</div>
+                </div>
+              </div>
+              {sec.items.map(item => {
+                const gi = GEN_INDEX[item.id];
+                if (gi < completed) return <StreamDoneCard key={item.id} item={item} dd={dd} />;
+                if (gi === typing.index) return (
+                  <div className="dr-qcanvas dr-stream-card active" key={item.id} ref={activeRef}>
                     <div className="dr-qcanvas-head"><div className="dr-qcanvas-q">{item.q}</div></div>
                     <div className="dr-qedit"><span className="dr-qprose">{typing.text}</span><span className="dr-stream-caret" /></div>
                   </div>
-                )}
-              </React.Fragment>
-            );
-          })}
+                );
+                return <StreamPendingCard key={item.id} item={item} />;
+              })}
+            </div>
+          ))}
         </div>
       </div>
+      <AIPanelEmpty />
     </div>
   );
 }

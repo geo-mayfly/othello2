@@ -1908,9 +1908,18 @@ button.dr-chip:hover { background: var(--bg-elevated-2); color: var(--text-prima
 .dr-stream-group { animation: cardLand 350ms ease; }
 .dr-stream-card { animation: cardLand 350ms ease; }
 .dr-stream-card .dr-qedit:hover { background: transparent; }
+.dr-stream-card.active { border-color: var(--accent-line); box-shadow: 0 0 0 1px var(--accent-line); }
+.dr-stream-card.pending { opacity: 0.5; }
 .dr-stream-caret { display: inline-block; width: 2px; height: 1.05em; margin-left: 1px; background: var(--accent); vertical-align: text-bottom; animation: streamCaret 1s step-end infinite; }
+/* shimmer skeleton for answers not yet drafted */
+.dr-qpending { display: flex; flex-direction: column; gap: 9px; padding: 8px 0 4px; }
+.dr-skeleton-line { height: 9px; border-radius: 5px; background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-elevated-2) 50%, var(--bg-elevated) 75%); background-size: 200% 100%; animation: shimmer 1.5s linear infinite; }
+.dr-skeleton-line.short { width: 52%; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes streamCaret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* empty-state panel shown while the document is generating */
+.dr-ai-genwait { display: flex; align-items: center; gap: 9px; margin-top: 16px; padding: 12px; font-size: 12.5px; color: var(--text-muted); border: 1px dashed var(--border-default); border-radius: var(--r-card); }
 
 /* thematic section group — organisational header only */
 .dr-group { margin-bottom: 26px; }
