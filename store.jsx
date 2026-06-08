@@ -30,6 +30,7 @@ function initialDataRoom() {
     chubbSynced: false,  // flag-A remediation synced the Chubb cert to the KB
     dd: null,            // working state for the open DD container
     docViewer: null,     // { docId, page?, sheet? } reference quick-view
+    kbDetail: null,      // { id } open knowledge-base item detail
   };
 }
 
@@ -318,6 +319,17 @@ function reducer(state, action) {
       if (!kbDocs.some(d => d.id === action.doc.id)) kbDocs = [deepClone(action.doc), ...kbDocs];
       return { ...state, dataRoom: { ...state.dataRoom, kbDocs } };
     }
+
+    case "DR_KB_ADD_NOTE": {
+      let kbFreeform = state.dataRoom.kbFreeform;
+      if (!kbFreeform.some(n => n.id === action.note.id)) kbFreeform = [deepClone(action.note), ...kbFreeform];
+      return { ...state, dataRoom: { ...state.dataRoom, kbFreeform } };
+    }
+
+    case "DR_OPEN_KB_ITEM":
+      return { ...state, dataRoom: { ...state.dataRoom, kbDetail: { id: action.id } } };
+    case "DR_CLOSE_KB_ITEM":
+      return { ...state, dataRoom: { ...state.dataRoom, kbDetail: null } };
 
     case "DR_OPEN_DOC":
       return { ...state, dataRoom: { ...state.dataRoom, docViewer: { docId: action.docId, page: action.page, sheet: action.sheet } } };

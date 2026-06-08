@@ -36,10 +36,13 @@ function AppShell() {
       {previewForm && <FortlakePreview />}
       {fieldMapSlideoverId && <FieldMapSlideover />}
       {state.dataRoom.docViewer && <DataRoomDocViewer />}
+      {state.dataRoom.kbDetail && <KbItemDetail />}
       <ResolveSlideover />
 
       {/* fixed-position bits */}
-      <DemoPanel />
+      {/* The Data Room module (Knowledge Base + Data Rooms) is self-contained
+          and does not use the scripted demo control panel. */}
+      {module !== "datarooms" && module !== "knowledge_base" && <DemoPanel />}
       {module !== "datarooms" && <ChatPanel />}
       <ToastStack />
     </div>
