@@ -40,7 +40,7 @@ function AppShell() {
 
       {/* fixed-position bits */}
       <DemoPanel />
-      <ChatPanel />
+      {module !== "datarooms" && <ChatPanel />}
       <ToastStack />
     </div>
   );

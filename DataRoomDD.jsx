@@ -54,6 +54,21 @@ function itemToHtml(item, dd) {
   return html;
 }
 
+// Knowledge-base documents cited by a question's answer, in display order and
+// de-duplicated by docId. Resolves each docId against the live KB (kbDocs) with
+// the uploaded Chubb certificate as a fallback (mirrors DataRoomDocViewer).
+function itemSourceDocs(item, dd, kbDocs) {
+  const tokens = (itemUsesFinal(dd, item) ? item.contentFinal : item.content) || [];
+  const seen = new Map();
+  tokens.forEach(t => {
+    if (typeof t === "string" || !t.r || !t.r.docId) return;
+    if (!seen.has(t.r.docId)) seen.set(t.r.docId, { docId: t.r.docId, page: t.r.page, sheet: t.r.sheet });
+  });
+  return Array.from(seen.values())
+    .map(ref => ({ ...ref, doc: (kbDocs || []).find(d => d.id === ref.docId) || (ref.docId === "chubb_combined" ? CHUBB_KB_DOC : null) }))
+    .filter(s => s.doc);
+}
+
 // Trim a question's prose to its opening sentence, preserving any inline
 // reference tags that fall within it. Used by the per-question "shorten" chat.
 function shortenProse(prose) {
@@ -105,7 +120,7 @@ function DataRoomDD() {
 
       {dd.phase === "extracting" && <Extraction />}
       {dd.phase === "requirements" && <Requirements />}
-      {dd.phase === "generating" && <GenerationAnim />}
+      {dd.phase === "generating" && <Generation />}
       {onCanvas && <ReviewLayout docRef={docRef} finalised={finalised} />}
     </div>
   );
@@ -223,36 +238,103 @@ function Requirements() {
 }
 
 // ---------------------------------------------------------------
-// Phase 3 — generation animation (drafts the document section by section)
+// Phase 3 — live generation: the document is drafted in real time,
+// answer by answer, straight into the canvas (no separate progress screen).
 // ---------------------------------------------------------------
-function GenerationAnim() {
+function itemPlainText(item) {
+  return (item.content || []).map(t => (typeof t === "string" ? t : (t.r ? t.r.label : ""))).join("");
+}
+
+// A finished answer — memoised so completed cards aren't re-parsed on every
+// keystroke tick while later answers are still streaming in.
+const StreamDoneCard = React.memo(function StreamDoneCard({ item, dd }) {
+  return (
+    <div className="dr-qcanvas dr-stream-card">
+      <div className="dr-qcanvas-head"><div className="dr-qcanvas-q">{item.q}</div></div>
+      <div className="dr-qedit" dangerouslySetInnerHTML={{ __html: itemToHtml(item, dd) }} />
+    </div>
+  );
+});
+
+function Generation() {
   const { state, dispatch } = useStore();
+  const dd = state.dataRoom.dd;
   const speed = state.speed || 1;
-  const [done, setDone] = useState(0);
+  const [completed, setCompleted] = useState(0);
+  const [typing, setTyping] = useState({ index: 0, text: "" });
+  const activeRef = useRef(null);
+
   useEffect(() => {
     let cancelled = false;
+    const wait = (ms) => new Promise(r => setTimeout(r, ms / speed));
     (async () => {
-      await new Promise(r => setTimeout(r, 500 / speed));
-      for (let i = 0; i < DD_SECTIONS.length; i++) {
-        if (cancelled) return; setDone(i + 1);
-        await new Promise(r => setTimeout(r, 800 / speed));
+      await wait(350);
+      for (let i = 0; i < DD_ALL_ITEMS.length; i++) {
+        if (cancelled) return;
+        const full = itemPlainText(DD_ALL_ITEMS[i]);
+        const step = Math.max(4, Math.ceil(full.length / 8));
+        setTyping({ index: i, text: "" });
+        await wait(70);
+        for (let c = step; c < full.length; c += step) {
+          if (cancelled) return;
+          setTyping({ index: i, text: full.slice(0, c) });
+          await wait(22);
+        }
+        if (cancelled) return;
+        setTyping({ index: i, text: full });
+        await wait(60);
+        setCompleted(i + 1);
+        await wait(45);
       }
-      await new Promise(r => setTimeout(r, 400 / speed));
-      if (!cancelled) dispatch({ type: "DR_SET_PHASE", phase: "review" });
+      if (cancelled) return;
+      await wait(550);
+      dispatch({ type: "DR_SET_PHASE", phase: "review" });
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // keep the answer that's currently being written in view
+  useEffect(() => { if (activeRef.current) activeRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [typing.index]);
+
+  const doneAll = completed >= DD_ALL_ITEMS.length;
+  const visibleCount = Math.min(typing.index + 1, DD_ALL_ITEMS.length);
+
   return (
-    <div className="dr-body-centered">
-      <div className="dr-proc">
-        <div className="dr-proc-spinner"><span /></div>
-        <div className="dr-proc-title">Drafting responses from approved sources…</div>
-        <div className="dr-proc-steps">
-          {DD_SECTIONS.map((s, i) => (
-            <div key={s.id} className={`dr-proc-step ${i < done ? "done" : i === done ? "current" : ""}`}>
-              <span className="dr-proc-dot">{i < done ? <Icon name="check" size={12} /> : null}</span>Drafting “{s.title}”
-            </div>
-          ))}
+    <div className="dr-review-layout">
+      <div className="dr-doc-pane full">
+        <div className="dr-stream-status">
+          {!doneAll && <span className="dr-stream-spin" />}
+          <span>{doneAll ? "Draft complete — opening for review…" : "Drafting responses from the knowledge base…"}</span>
+        </div>
+        <div className="dr-doc">
+          <div className="dr-doc-headline">
+            <div className="dr-doc-h1">{DD_META.title}</div>
+            <div className="dr-doc-meta">{DD_META.manager} · {DD_META.product} · Drafting…</div>
+          </div>
+          {DD_ALL_ITEMS.slice(0, visibleCount).map((item, i) => {
+            const sec = SECTION_BY_ID[item.sectionId];
+            const header = i === 0 || DD_ALL_ITEMS[i - 1].sectionId !== item.sectionId;
+            return (
+              <React.Fragment key={item.id}>
+                {header && (
+                  <div className="dr-group-head dr-stream-group">
+                    <div>
+                      <div className="dr-group-title">{sec.title}</div>
+                      <div className="dr-group-intro">{sec.intro}</div>
+                    </div>
+                  </div>
+                )}
+                {i < completed ? (
+                  <StreamDoneCard item={item} dd={dd} />
+                ) : (
+                  <div className="dr-qcanvas dr-stream-card" ref={activeRef}>
+                    <div className="dr-qcanvas-head"><div className="dr-qcanvas-q">{item.q}</div></div>
+                    <div className="dr-qedit"><span className="dr-qprose">{typing.text}</span><span className="dr-stream-caret" /></div>
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -276,7 +358,6 @@ function ReviewLayout({ docRef, finalised }) {
   return (
     <div className="dr-review-layout">
       <div className={`dr-doc-pane ${finalised ? "full" : ""}`} ref={docRef} onClick={onDocClick}>
-        {!finalised && <Toolbar />}
         <div className="dr-doc">
           <div className="dr-doc-headline">
             <div className="dr-doc-h1">{DD_META.title}</div>
@@ -286,30 +367,6 @@ function ReviewLayout({ docRef, finalised }) {
         </div>
       </div>
       {!finalised && <AIPanel docRef={docRef} />}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------
-// Formatting toolbar — bold / italic for the focused question canvas
-// ---------------------------------------------------------------
-function Toolbar() {
-  const [active, setActive] = useState({ bold: false, italic: false });
-  useEffect(() => {
-    const update = () => { try { setActive({ bold: document.queryCommandState("bold"), italic: document.queryCommandState("italic") }); } catch (e) {} };
-    document.addEventListener("selectionchange", update);
-    return () => document.removeEventListener("selectionchange", update);
-  }, []);
-  const cmd = (c) => (e) => {
-    e.preventDefault(); // keep the current selection inside the editor
-    document.execCommand(c, false, null);
-    try { setActive({ bold: document.queryCommandState("bold"), italic: document.queryCommandState("italic") }); } catch (e2) {}
-  };
-  return (
-    <div className="dr-toolbar">
-      <button type="button" className={`dr-tool ${active.bold ? "on" : ""}`} title="Bold (⌘B)" onMouseDown={cmd("bold")}><b>B</b></button>
-      <button type="button" className={`dr-tool ${active.italic ? "on" : ""}`} title="Italic (⌘I)" onMouseDown={cmd("italic")}><i>I</i></button>
-      <span className="dr-toolbar-hint">Select text in any answer to format · ⌘B / ⌘I also work</span>
     </div>
   );
 }
@@ -355,7 +412,6 @@ function QuestionCanvas({ item }) {
         <div className="dr-qcanvas-head-right">
           {statusLabel && <span className="pill attention dr-item-status"><Icon name="warning" size={10} /> {statusLabel}</span>}
           {flagged && resolved && <span className="pill ready dr-item-status"><Icon name="check" size={10} /> {f && f.validated ? "validated" : "resolved"}</span>}
-          <span className="dr-qcanvas-edit"><Icon name="sparkle" size={11} /> {selected ? "Editing" : "Edit with AI"}</span>
         </div>
       </div>
       <QuestionEditor item={item} />
@@ -397,6 +453,7 @@ function AIPanel({ docRef }) {
             </div>
             <div className="dr-ai-sub" style={{ marginTop: 0 }}>{selectedItem.sectionTitle}</div>
             <div className="dr-ai-title" style={{ marginTop: 2 }}>{selectedItem.q}</div>
+            <SourcesCard item={selectedItem} />
             <div className="dr-ai-cards">
               {selectedItem.flagInfo
                 ? <FlagCard item={selectedItem} onUpload={() => setUpload({ itemId: selectedItem.id, kind: selectedItem.flagInfo.type })} />
@@ -441,6 +498,36 @@ function AIPanel({ docRef }) {
 function scrollToItem(docRef, itemId) {
   const el = docRef?.current?.querySelector(`#item-${itemId}`);
   if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+// sources used (per-question) — shown at the top of the panel on selection
+function SourcesCard({ item }) {
+  const { state, dispatch } = useStore();
+  const dd = state.dataRoom.dd;
+  const sources = itemSourceDocs(item, dd, state.dataRoom.kbDocs);
+  const open = (s) => dispatch({
+    type: "DR_OPEN_DOC",
+    docId: s.docId,
+    page: s.page ? Number(s.page) : (s.doc.kind === "pdf" ? 1 : undefined),
+    sheet: s.sheet || undefined,
+  });
+  return (
+    <div className="dr-sources">
+      <div className="dr-sources-head"><Icon name="book" size={12} /> Sources from the knowledge base</div>
+      {sources.length === 0 ? (
+        <div className="dr-sources-empty">Drafted from the approved knowledge base — no specific document cited for this answer.</div>
+      ) : sources.map((s, i) => (
+        <button key={i} className="dr-source" onClick={() => open(s)}>
+          <span className="dr-source-icon"><Icon name={docIcon(s.doc.kind)} size={15} /></span>
+          <span className="dr-source-main">
+            <span className="dr-source-title">{s.doc.title}</span>
+            <span className="dr-source-meta">{s.doc.type}{s.page ? ` · p.${s.page}` : s.sheet ? ` · sheet ${s.sheet}` : ""}</span>
+          </span>
+          <Icon name="chevron-right" size={13} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+        </button>
+      ))}
+    </div>
+  );
 }
 
 // flag / input card (per-question)
@@ -595,7 +682,7 @@ function AIChat({ docRef, item, onAttach }) {
         {thinking && <div className="chat-thinking"><span className="dots"><span /><span /><span /></span><span>Working…</span></div>}
       </div>
       {msgs.length < 2 && (
-        <div className="chat-chips">{chips.map((c, i) => <button key={i} className="chat-chip" onClick={() => send(c)}>{c}</button>)}</div>
+        <div className="chat-chips">{chips.map((c, i) => <button key={i} className="chat-chip" onClick={() => send(c)}><Icon name="sparkle" size={12} /><span>{c}</span></button>)}</div>
       )}
       <div className="dr-ai-chat-input">
         <button className="btn btn-ghost btn-icon" title="Attach files" onClick={onAttach}><Icon name="upload" size={15} /></button>
