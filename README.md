@@ -21,5 +21,6 @@ A stand-alone module (Knowledge Base + Data Rooms in the left nav) for DD
 questionnaire automation. Self-contained and pre-baked — it does not use the
 demo control panel. Data lives in `dataroom-data.js`; views are
 `DataRoomKB.jsx`, `DataRoomList.jsx`, `DataRoomDD.jsx`, `DataRoomDocViewer.jsx`.
-The reference quick-view uses pdf.js (CDN). Drop Copia's source PDFs into
-`dataroom/docs/` — see `dataroom/docs/README.md` for the exact filenames.
+The reference quick-view uses pdf.js (CDN). Copia's source PDFs and the Q6
+policy pack are committed under `dataroom/docs/` — see `dataroom/docs/README.md`
+for the filename map and what's still rendered from baked snippets.

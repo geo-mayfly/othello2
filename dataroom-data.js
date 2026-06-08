@@ -68,18 +68,24 @@ const KB_DOCS = [
   { id: "oc_mid", kind: "pdf", title: "Apr26 OC Mid-Cap Fund — Monthly Fund Update.pdf", type: "Fund update", asAt: "Apr 2026", added: "1 Jun 2026", source: "Copia OneDrive", file: "dataroom/docs/Apr26 OC Mid-Cap Fund — Monthly Fund Update.pdf" },
   { id: "oc_premium", kind: "pdf", title: "Apr26 OC Premium Small Companies Fund — Monthly Fund Update.pdf", type: "Fund update", asAt: "Apr 2026", added: "1 Jun 2026", source: "Copia OneDrive", file: "dataroom/docs/Apr26 OC Premium Small Companies Fund — Monthly Fund Update.pdf" },
 
+  // Policy pack — real Copia/Chester policies (Q6 documents). Rows with a
+  // `file` preview via pdf.js; the few without a supplied file stay
+  // display-only and degrade to a clean placeholder.
   { id: "pol_best_exec", kind: "doc", title: "Best Execution Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
-  { id: "pol_bcp", kind: "doc", title: "BCP & Disaster Recovery Plan.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
-  { id: "pol_trade_alloc", kind: "doc", title: "Trade Allocation Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
-  { id: "pol_rmf", kind: "doc", title: "Risk Management Framework.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
-  { id: "pol_proxy", kind: "doc", title: "Proxy Voting Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
-  { id: "pol_compliance", kind: "doc", title: "Compliance Manual.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
+  { id: "pol_bcp", kind: "pdf", title: "BCP & Disaster Recovery Plan.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", file: "dataroom/docs/BCP & Disaster Recovery Plan.pdf", policy: true },
+  { id: "pol_trade_alloc", kind: "pdf", title: "Trade Allocation Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", file: "dataroom/docs/Trade Allocation Policy.pdf", policy: true },
+  { id: "pol_rmf", kind: "pdf", title: "Risk Management Framework.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", file: "dataroom/docs/Risk Management Framework.pdf", policy: true },
+  { id: "pol_proxy", kind: "pdf", title: "Proxy Voting Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", file: "dataroom/docs/Proxy Voting Policy.pdf", policy: true },
+  { id: "pol_compliance", kind: "pdf", title: "Compliance Manual.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", file: "dataroom/docs/Compliance Manual.pdf", policy: true },
   { id: "pol_counterparty", kind: "doc", title: "Counterparty Exposure Limits.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
   { id: "pol_soft_dollar", kind: "doc", title: "Soft Dollar Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
   { id: "pol_related_party", kind: "doc", title: "Related-Party Transactions Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
-  { id: "pol_coi", kind: "doc", title: "Conflicts of Interest Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
-  { id: "pol_data_sec", kind: "doc", title: "Data & Information Security Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
-  { id: "pol_broker", kind: "doc", title: "Broker Selection Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", policy: true },
+  { id: "pol_coi", kind: "pdf", title: "Conflicts of Interest Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", file: "dataroom/docs/Conflicts of Interest Policy.pdf", policy: true },
+  { id: "pol_data_sec", kind: "pdf", title: "Data & Information Security Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", file: "dataroom/docs/Data & Information Security Policy.pdf", policy: true },
+  { id: "pol_broker", kind: "pdf", title: "Broker Selection Policy.pdf", type: "Policy", asAt: "2025", added: "1 Jun 2026", source: "Policy pack", file: "dataroom/docs/Broker Selection Policy.pdf", policy: true },
+  { id: "pol_risk_appetite", kind: "pdf", title: "Risk Appetite Statement.pdf", type: "Policy", asAt: "Aug 2024", added: "1 Jun 2026", source: "Policy pack", file: "dataroom/docs/Risk Appetite Statement.pdf", policy: true },
+  { id: "pol_compliance_plan", kind: "pdf", title: "Chester Compliance Plan.pdf", type: "Policy", asAt: "Jan 2024", added: "1 Jun 2026", source: "Policy pack", file: "dataroom/docs/Chester Compliance Plan.pdf", policy: true },
+  { id: "pol_deriv_risk", kind: "pdf", title: "Derivative Risk Management Statement.pdf", type: "Policy", asAt: "Dec 2024", added: "1 Jun 2026", source: "Policy pack", file: "dataroom/docs/Derivative Risk Management Statement.pdf", policy: true },
 ];
 
 const CHUBB_KB_DOC = {
