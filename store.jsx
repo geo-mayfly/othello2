@@ -48,7 +48,7 @@ function makeDdState({ id, name, requester, complete = false }) {
   return {
     id, name, requester,
     phase: complete ? "finalised" : "extracting",  // extracting | requirements | generating | review | finalised
-    selectedSectionId: null,
+    selectedItemId: null,
     flags,
   };
 }
@@ -283,8 +283,8 @@ function reducer(state, action) {
     case "DR_SET_PHASE":
       return { ...state, dataRoom: { ...state.dataRoom, dd: { ...state.dataRoom.dd, phase: action.phase } } };
 
-    case "DR_SELECT_SECTION":
-      return { ...state, dataRoom: { ...state.dataRoom, dd: { ...state.dataRoom.dd, selectedSectionId: action.sectionId } } };
+    case "DR_SELECT_ITEM":
+      return { ...state, dataRoom: { ...state.dataRoom, dd: { ...state.dataRoom.dd, selectedItemId: action.itemId } } };
 
     case "DR_RESOLVE_INFO": {
       const dd = state.dataRoom.dd;
@@ -310,7 +310,7 @@ function reducer(state, action) {
       const dd = state.dataRoom.dd;
       const dataRooms = state.dataRoom.dataRooms.map(d =>
         d.id === dd.id ? { ...d, status: "complete", done: DD_ITEM_COUNT, items: DD_ITEM_COUNT } : d);
-      return { ...state, dataRoom: { ...state.dataRoom, dataRooms, dd: { ...dd, phase: "finalised", selectedSectionId: null } } };
+      return { ...state, dataRoom: { ...state.dataRoom, dataRooms, dd: { ...dd, phase: "finalised", selectedItemId: null } } };
     }
 
     case "DR_KB_ADD": {

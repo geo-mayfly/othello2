@@ -4,15 +4,19 @@
 //
 // Phases: extracting → requirements → generating → review → finalised
 //
-// The generated output is a multi-section EDITABLE document — each
-// section is its own Google-Docs-style canvas with inline, clickable
-// knowledge-base reference tags. The review screen pairs the document
-// with a right-hand AI panel (outstanding items + chat) that can edit
-// the whole document or drill into a single section.
+// The generated output is a multi-section EDITABLE document. Each
+// QUESTION is its own Google-Docs-style rich-text canvas — answer prose
+// with inline clickable reference tags, an inline centered figure and,
+// once resolved, its data table. Thematic sections are lightweight group
+// headers over those question canvases. The review screen pairs the
+// document with a right-hand AI panel: pick a question to see its
+// validation requirement and a chat scoped to editing just that answer,
+// or work on the whole document with nothing selected.
 
 // ---- helpers shared across the module ----
 const TAG_SVG = '<svg class="dr-tag-ic" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
 function escHtml(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function tokensToHtml(tokens) {
   return tokens.map(t => {
     if (typeof t === "string") return escHtml(t);
@@ -20,7 +24,6 @@ function tokensToHtml(tokens) {
     return `<span class="dr-tag" contenteditable="false" data-docid="${r.docId || ""}" data-page="${r.page || ""}" data-sheet="${r.sheet || ""}">${TAG_SVG}<span>${escHtml(r.label)}</span></span>`;
   }).join("");
 }
-const ITEM_SECTION = Object.fromEntries(DD_ALL_ITEMS.map(it => [it.id, it.sectionId]));
 const SECTION_BY_ID = Object.fromEntries(DD_SECTIONS.map(s => [s.id, s]));
 
 function itemSatisfied(dd, it) {
@@ -29,6 +32,51 @@ function itemSatisfied(dd, it) {
   return it.flagInfo.type === "validation" ? f.validated : f.resolved;
 }
 function ddAllDone(dd) { return DD_REVIEW_ITEMS.every(it => itemSatisfied(dd, it)); }
+
+// A question swaps to its "final" content once its flag is resolved/validated.
+function itemUsesFinal(dd, item) { return !!(item.contentFinal && itemSatisfied(dd, item)); }
+
+// Build the inner HTML for one question's editable canvas. Embeds (reference
+// tags, figure, table) are contenteditable=false so the caret skips over them.
+function figureToHtml(img) {
+  return `<figure class="dr-figure" contenteditable="false"><img src="${escHtml(img.src)}" alt="${escHtml(img.caption)}" loading="lazy"/><figcaption>${escHtml(img.caption)}</figcaption></figure>`;
+}
+function tableToHtml(table) {
+  const head = table.head.map(h => `<th>${escHtml(h)}</th>`).join("");
+  const rows = table.rows.map(r => `<tr>${r.map(c => `<td>${escHtml(c)}</td>`).join("")}</tr>`).join("");
+  return `<table class="dr-table" contenteditable="false"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+function itemToHtml(item, dd) {
+  const useFinal = itemUsesFinal(dd, item);
+  let html = `<div class="dr-qprose">${tokensToHtml(useFinal ? item.contentFinal : item.content)}</div>`;
+  if (item.image) html += figureToHtml(item.image);
+  if (item.table && useFinal) html += tableToHtml(item.table);
+  return html;
+}
+
+// Trim a question's prose to its opening sentence, preserving any inline
+// reference tags that fall within it. Used by the per-question "shorten" chat.
+function shortenProse(prose) {
+  let done = false; const remove = [];
+  Array.from(prose.childNodes).forEach(node => {
+    if (done) { remove.push(node); return; }
+    if (node.nodeType === 3) {
+      const m = node.nodeValue.match(/^[\s\S]*?[.?!](?=\s|$)/);
+      if (m && m[0].trim().length) { node.nodeValue = m[0]; done = true; }
+    }
+  });
+  remove.forEach(n => n.parentNode && n.parentNode.removeChild(n));
+  return done;
+}
+
+// Parse a free-text edit instruction like: replace "X" with "Y" / change X to Y.
+function parseReplace(text) {
+  let m = text.match(/["'“”](.+?)["'“”]\s*(?:to|with|into|by|=>|->|→)\s*["'“”](.+?)["'“”]/i);
+  if (m) return [m[1], m[2]];
+  m = text.match(/\b(?:replace|change|swap|rename|substitute|update)\s+(.+?)\s+(?:to|with|into|by)\s+(.+)/i);
+  if (m) return [m[1].replace(/^["'“”]+|["'“”]+$/g, "").trim(), m[2].replace(/[\s.!?"'“”]+$/g, "").replace(/^["'“”]+/g, "").trim()];
+  return null;
+}
 
 // ============================================================
 function DataRoomDD() {
@@ -228,12 +276,13 @@ function ReviewLayout({ docRef, finalised }) {
   return (
     <div className="dr-review-layout">
       <div className={`dr-doc-pane ${finalised ? "full" : ""}`} ref={docRef} onClick={onDocClick}>
+        {!finalised && <Toolbar />}
         <div className="dr-doc">
           <div className="dr-doc-headline">
             <div className="dr-doc-h1">{DD_META.title}</div>
             <div className="dr-doc-meta">{DD_META.manager} · {DD_META.product} · {finalised ? "Finalised draft" : "Draft for review"}</div>
           </div>
-          {DD_SECTIONS.map(s => <SectionCanvas key={s.id} section={s} />)}
+          {DD_SECTIONS.map(s => <SectionGroup key={s.id} section={s} />)}
         </div>
       </div>
       {!finalised && <AIPanel docRef={docRef} />}
@@ -242,75 +291,88 @@ function ReviewLayout({ docRef, finalised }) {
 }
 
 // ---------------------------------------------------------------
-// A single section canvas
+// Formatting toolbar — bold / italic for the focused question canvas
 // ---------------------------------------------------------------
-function SectionCanvas({ section }) {
-  const { state, dispatch } = useStore();
-  const dd = state.dataRoom.dd;
-  const selected = dd.selectedSectionId === section.id;
-  const flaggedCount = section.items.filter(it => it.flagInfo && !itemSatisfied(dd, it)).length;
-
+function Toolbar() {
+  const [active, setActive] = useState({ bold: false, italic: false });
+  useEffect(() => {
+    const update = () => { try { setActive({ bold: document.queryCommandState("bold"), italic: document.queryCommandState("italic") }); } catch (e) {} };
+    document.addEventListener("selectionchange", update);
+    return () => document.removeEventListener("selectionchange", update);
+  }, []);
+  const cmd = (c) => (e) => {
+    e.preventDefault(); // keep the current selection inside the editor
+    document.execCommand(c, false, null);
+    try { setActive({ bold: document.queryCommandState("bold"), italic: document.queryCommandState("italic") }); } catch (e2) {}
+  };
   return (
-    <div className={`dr-canvas ${selected ? "selected" : ""}`} id={`sec-${section.id}`}>
-      <div className="dr-canvas-head" onClick={() => dispatch({ type: "DR_SELECT_SECTION", sectionId: selected ? null : section.id })}>
-        <div>
-          <div className="dr-canvas-title">{section.title}</div>
-          <div className="dr-canvas-intro">{section.intro}</div>
-        </div>
-        <div className="dr-canvas-head-right">
-          {flaggedCount > 0 && <span className="pill attention"><Icon name="warning" size={11} /> {flaggedCount}</span>}
-          <span className="dr-canvas-select">{selected ? "Selected" : "Review section"}</span>
-        </div>
-      </div>
-      {section.items.map(it => <ItemBlock key={it.id} item={it} />)}
+    <div className="dr-toolbar">
+      <button type="button" className={`dr-tool ${active.bold ? "on" : ""}`} title="Bold (⌘B)" onMouseDown={cmd("bold")}><b>B</b></button>
+      <button type="button" className={`dr-tool ${active.italic ? "on" : ""}`} title="Italic (⌘I)" onMouseDown={cmd("italic")}><i>I</i></button>
+      <span className="dr-toolbar-hint">Select text in any answer to format · ⌘B / ⌘I also work</span>
     </div>
   );
 }
 
-function ItemBlock({ item }) {
+// ---------------------------------------------------------------
+// A thematic section — a lightweight group header over its questions
+// ---------------------------------------------------------------
+function SectionGroup({ section }) {
   const { state } = useStore();
   const dd = state.dataRoom.dd;
-  const f = item.flagInfo ? dd.flags[item.id] : null;
-  const resolved = item.flagInfo ? itemSatisfied(dd, item) : true;
-  const useFinal = item.contentFinal && (item.flag === "info" ? (f && f.resolved) : (f && f.validated));
-  const tokens = useFinal ? item.contentFinal : item.content;
-  const showTable = item.table && useFinal;
-
+  const flaggedCount = section.items.filter(it => it.flagInfo && !itemSatisfied(dd, it)).length;
   return (
-    <div className="dr-item">
-      <div className="dr-item-q">
-        {item.q}
-        {item.flagInfo && !resolved && <span className="pill attention dr-item-status"><Icon name="warning" size={10} /> {item.flagInfo.type === "validation" ? "validation required" : "input required"}</span>}
-        {item.flagInfo && resolved && <span className="pill ready dr-item-status"><Icon name="check" size={10} /> {f && f.validated ? "validated" : "resolved"}</span>}
+    <div className="dr-group" id={`sec-${section.id}`}>
+      <div className="dr-group-head">
+        <div>
+          <div className="dr-group-title">{section.title}</div>
+          <div className="dr-group-intro">{section.intro}</div>
+        </div>
+        {flaggedCount > 0 && <span className="pill attention"><Icon name="warning" size={11} /> {flaggedCount} to review</span>}
       </div>
-      <EditableAnswer tokens={tokens} revision={useFinal ? "final" : "draft"} />
-      {showTable && <CanvasTable table={item.table} />}
-      {item.image && (
-        <figure className="dr-figure" contentEditable={false}>
-          <img src={item.image.src} alt={item.image.caption} loading="lazy" />
-          <figcaption>{item.image.caption}</figcaption>
-        </figure>
-      )}
+      {section.items.map(it => <QuestionCanvas key={it.id} item={it} />)}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------
+// One question = its own selectable rich-text canvas
+// ---------------------------------------------------------------
+function QuestionCanvas({ item }) {
+  const { state, dispatch } = useStore();
+  const dd = state.dataRoom.dd;
+  const selected = dd.selectedItemId === item.id;
+  const flagged = !!item.flagInfo;
+  const f = flagged ? dd.flags[item.id] : null;
+  const resolved = flagged ? itemSatisfied(dd, item) : true;
+  const statusLabel = flagged && !resolved
+    ? (item.flagInfo.type === "validation" ? "validation required" : item.flagInfo.type === "upload" ? "attachment requested" : "input required")
+    : null;
+  return (
+    <div className={`dr-qcanvas ${selected ? "selected" : ""}`} id={`item-${item.id}`} data-item={item.id}>
+      <div className="dr-qcanvas-head" onClick={() => dispatch({ type: "DR_SELECT_ITEM", itemId: selected ? null : item.id })}>
+        <div className="dr-qcanvas-q">{item.q}</div>
+        <div className="dr-qcanvas-head-right">
+          {statusLabel && <span className="pill attention dr-item-status"><Icon name="warning" size={10} /> {statusLabel}</span>}
+          {flagged && resolved && <span className="pill ready dr-item-status"><Icon name="check" size={10} /> {f && f.validated ? "validated" : "resolved"}</span>}
+          <span className="dr-qcanvas-edit"><Icon name="sparkle" size={11} /> {selected ? "Editing" : "Edit with AI"}</span>
+        </div>
+      </div>
+      <QuestionEditor item={item} />
     </div>
   );
 }
 
 // Uncontrolled contentEditable — innerHTML is set imperatively so React
-// re-renders never clobber the user's edits. Re-set only when `revision`
-// flips (draft → final on resolve).
-function EditableAnswer({ tokens, revision }) {
+// re-renders never clobber the user's edits. Re-set only when this
+// question flips draft → final on resolve/validate.
+function QuestionEditor({ item }) {
+  const { state } = useStore();
+  const dd = state.dataRoom.dd;
   const ref = useRef(null);
-  useEffect(() => { if (ref.current) ref.current.innerHTML = tokensToHtml(tokens); }, [revision]);
-  return <div className="dr-canvas-answer" ref={ref} contentEditable suppressContentEditableWarning spellCheck={false} />;
-}
-
-function CanvasTable({ table }) {
-  return (
-    <table className="dr-table" contentEditable={false}>
-      <thead><tr>{table.head.map((h, i) => <th key={i}>{h}</th>)}</tr></thead>
-      <tbody>{table.rows.map((row, i) => <tr key={i}>{row.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody>
-    </table>
-  );
+  const revision = itemUsesFinal(dd, item) ? "final" : "draft";
+  useEffect(() => { if (ref.current) ref.current.innerHTML = itemToHtml(item, dd); }, [revision]);
+  return <div className="dr-qedit" ref={ref} contentEditable suppressContentEditableWarning spellCheck={false} />;
 }
 
 // ---------------------------------------------------------------
@@ -319,37 +381,37 @@ function CanvasTable({ table }) {
 function AIPanel({ docRef }) {
   const { state, dispatch } = useStore();
   const dd = state.dataRoom.dd;
-  const selectedSection = dd.selectedSectionId ? SECTION_BY_ID[dd.selectedSectionId] : null;
+  const selectedItem = dd.selectedItemId ? DD_ALL_ITEMS.find(i => i.id === dd.selectedItemId) : null;
   const [upload, setUpload] = useState(null); // { itemId, kind } | { kind:"chat" }
   const allDone = ddAllDone(dd);
 
   return (
     <div className="dr-ai-panel">
       <div className="dr-ai-top">
-        {selectedSection ? (
+        {selectedItem ? (
           <>
             <div className="dr-ai-secthead">
-              <button className="dr-ai-back" onClick={() => dispatch({ type: "DR_SELECT_SECTION", sectionId: null })}>
+              <button className="dr-ai-back" onClick={() => dispatch({ type: "DR_SELECT_ITEM", itemId: null })}>
                 <Icon name="chevron-left" size={13} /> Whole document
               </button>
             </div>
-            <div className="dr-ai-title">{selectedSection.title}</div>
-            <div className="dr-ai-sub">{selectedSection.intro}</div>
+            <div className="dr-ai-sub" style={{ marginTop: 0 }}>{selectedItem.sectionTitle}</div>
+            <div className="dr-ai-title" style={{ marginTop: 2 }}>{selectedItem.q}</div>
             <div className="dr-ai-cards">
-              {selectedSection.items.filter(it => it.flagInfo).length === 0
-                ? <div className="dr-ai-empty">No outstanding items in this section. Edit the text directly, or ask the assistant below.</div>
-                : selectedSection.items.filter(it => it.flagInfo).map(it => <FlagCard key={it.id} item={it} onUpload={() => setUpload({ itemId: it.id, kind: it.flagInfo.type })} />)}
+              {selectedItem.flagInfo
+                ? <FlagCard item={selectedItem} onUpload={() => setUpload({ itemId: selectedItem.id, kind: selectedItem.flagInfo.type })} />
+                : <div className="dr-ai-empty">No input required for this question. Edit it directly in the canvas, or ask the assistant below to revise it.</div>}
             </div>
           </>
         ) : (
           <>
             <div className="dr-ai-title">Outstanding items <span className="pill attention" style={{ fontSize: 10 }}>{DD_REVIEW_ITEMS.filter(it => !itemSatisfied(dd, it)).length}</span></div>
-            <div className="dr-ai-sub">Items that still need a decision before you can finalise. Select one to act on it.</div>
+            <div className="dr-ai-sub">Questions that still need a decision before you can finalise. Select one to act on it.</div>
             <div className="dr-ai-list">
               {DD_REVIEW_ITEMS.map(it => {
                 const ok = itemSatisfied(dd, it);
                 return (
-                  <div key={it.id} className={`dr-ai-item ${ok ? "ok" : ""}`} onClick={() => { dispatch({ type: "DR_SELECT_SECTION", sectionId: ITEM_SECTION[it.id] }); scrollToSection(docRef, ITEM_SECTION[it.id]); }}>
+                  <div key={it.id} className={`dr-ai-item ${ok ? "ok" : ""}`} onClick={() => { dispatch({ type: "DR_SELECT_ITEM", itemId: it.id }); scrollToItem(docRef, it.id); }}>
                     <span className={`dr-ai-item-ic ${ok ? "ok" : it.flagInfo.type}`}>{ok ? <Icon name="check" size={12} /> : <Icon name="warning" size={12} />}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="dr-ai-item-title">{it.q}</div>
@@ -369,19 +431,19 @@ function AIPanel({ docRef }) {
         )}
       </div>
 
-      <AIChat docRef={docRef} section={selectedSection} onAttach={() => setUpload({ kind: "chat" })} />
+      <AIChat docRef={docRef} item={selectedItem} onAttach={() => setUpload({ kind: "chat" })} />
 
       {upload && <FileUploadModal ctx={upload} onClose={() => setUpload(null)} />}
     </div>
   );
 }
 
-function scrollToSection(docRef, sectionId) {
-  const el = docRef?.current?.querySelector(`#sec-${sectionId}`);
-  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+function scrollToItem(docRef, itemId) {
+  const el = docRef?.current?.querySelector(`#item-${itemId}`);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-// flag / input card (section mode)
+// flag / input card (per-question)
 function FlagCard({ item, onUpload }) {
   const { state, dispatch, toast } = useStore();
   const dd = state.dataRoom.dd;
@@ -421,27 +483,33 @@ function FlagCard({ item, onUpload }) {
 }
 
 // ---------------------------------------------------------------
-// Chat — global edits or section-scoped Q&A (scripted, on-rails)
+// Chat — whole-document edits, or edits scoped to one question (scripted)
 // ---------------------------------------------------------------
-function AIChat({ docRef, section, onAttach }) {
-  const { state, dispatch, toast } = useStore();
+function AIChat({ docRef, item, onAttach }) {
+  const { state, toast } = useStore();
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const bodyRef = useRef(null);
   const speed = state.speed || 1;
   useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight; }, [msgs, thinking]);
+  useEffect(() => { setMsgs([]); }, [item ? item.id : null]); // fresh thread when the focus changes
 
-  const replaceAcross = (pairs) => {
+  const getItemEl = () => (item && docRef?.current) ? docRef.current.querySelector(`[data-item="${item.id}"]`) : null;
+
+  // Replace text across every question canvas, or within one `root`. Skips
+  // contenteditable=false embeds (reference tags, figures, tables).
+  const replaceAcross = (pairs, root) => {
     let count = 0;
-    const nodes = docRef?.current?.querySelectorAll(".dr-canvas-answer") || [];
+    const scope = root || docRef?.current;
+    const nodes = scope ? scope.querySelectorAll(".dr-qedit") : [];
     nodes.forEach(node => {
       const walk = (n) => {
         if (n.nodeType === 3) {
           let txt = n.nodeValue;
-          pairs.forEach(([from, to]) => { txt = txt.replace(from, (m) => { count++; return to; }); });
+          pairs.forEach(([from, to]) => { txt = txt.replace(from, () => { count++; return to; }); });
           if (txt !== n.nodeValue) n.nodeValue = txt;
-        } else if (!(n.classList && n.classList.contains("dr-tag"))) {
+        } else if (n.nodeType === 1 && !(n.getAttribute && n.getAttribute("contenteditable") === "false")) {
           n.childNodes.forEach(walk);
         }
       };
@@ -452,25 +520,48 @@ function AIChat({ docRef, section, onAttach }) {
 
   const respond = (text) => {
     const lower = text.toLowerCase();
-    // headline live edit: rename Copia → Chester
+
+    // ---- per-question mode: edit just this answer ----
+    if (item) {
+      const pr = parseReplace(text);
+      if (pr) {
+        const [from, to] = pr;
+        const n = replaceAcross([[new RegExp(escapeRegExp(from), "g"), to]], getItemEl());
+        return n > 0
+          ? `Done — replaced ${n} occurrence${n === 1 ? "" : "s"} of “${from}” with “${to}” in this answer.`
+          : `I couldn't find “${from}” in this answer. Check the wording and try again, or edit the text directly.`;
+      }
+      if (/(shorten|concise|tighten|trim|brief|shorter)/.test(lower)) {
+        const prose = getItemEl()?.querySelector(".dr-qprose");
+        return prose && shortenProse(prose)
+          ? "Tightened this answer to its opening sentence. Keep editing inline, or ask me to adjust it further."
+          : "This answer is already concise.";
+      }
+      if (/(source|where.*from|reference|cite|citation)/.test(lower)) {
+        const hasTags = (item.content || []).some(t => typeof t !== "string") || (item.contentFinal || []).some(t => typeof t !== "string");
+        return hasTags
+          ? "This answer's sources are the reference tags shown inline — click one to open the source document at the cited page."
+          : "This answer is drafted from the approved knowledge base for this data room.";
+      }
+      return "I can edit this answer. Try “replace ‘X’ with ‘Y’”, “make this more concise”, or just edit the text directly in the canvas.";
+    }
+
+    // ---- whole-document mode ----
     if (/copia/.test(lower) && /chester/.test(lower) && /(change|replace|rename|swap|update)/.test(lower)) {
       const n = replaceAcross([
         [/Copia Investment Partners Ltd/g, "Chester Asset Management Pty Ltd"],
         [/Copia Investments/g, "Chester Asset Management Pty Ltd"],
         [/\bCopia\b/g, "Chester Asset Management Pty Ltd"],
       ]);
-      return `Done. I replaced ${n} reference${n === 1 ? "" : "s"} to Copia with "Chester Asset Management Pty Ltd" across the document. Review the highlighted sections and revert anything you want to keep.`;
+      return `Done. I replaced ${n} reference${n === 1 ? "" : "s"} to Copia with “Chester Asset Management Pty Ltd” across the document. Review the highlighted answers and revert anything you want to keep.`;
     }
     if (/(source|where.*from|reference|cite)/.test(lower)) {
       return "Every answer cites its source. For example, the firm-wide FUM figure comes from the Diversa IM Review, sheet 1.2.6. Click any reference tag to open the source at the cited page.";
     }
     if (/(shorten|concise|tighten|trim)/.test(lower)) {
-      return `In the full build I can rewrite ${section ? `the ${section.title} section` : "any section"} to a target length. For this demo the live example is the reference rename. Try "change references to Copia to Chester Asset Management".`;
+      return "Select a question first — click it in the document or pick one from the outstanding list — then ask me to make that answer more concise.";
     }
-    if (section) {
-      return `Noted for the ${section.title} section. You can resolve its items in the cards above, edit the text directly, or attach a document with the paperclip.`;
-    }
-    return 'I can edit the document on instruction. Try "change references to Copia to Chester Asset Management Pty Ltd", select a section to work on its items, or attach a file with the paperclip.';
+    return 'I can edit the document on instruction. Try "change references to Copia to Chester Asset Management Pty Ltd", select a question to edit it directly, or attach a file with the paperclip.';
   };
 
   const send = async (text) => {
@@ -482,19 +573,22 @@ function AIChat({ docRef, section, onAttach }) {
     setThinking(false);
     setMsgs(m => [...m, { role: "bot", text: reply }]);
     if (/replaced \d+ reference/.test(reply)) toast("Document updated · references renamed", "ready");
+    else if (/^Done — replaced/.test(reply)) toast("Answer updated", "ready");
+    else if (/^Tightened/.test(reply)) toast("Answer shortened", "ready");
   };
 
-  const chips = section
-    ? [`What's missing in ${section.title}?`, "Summarise this section"]
+  const itemLabel = item ? (item.q.length > 38 ? item.q.slice(0, 36) + "…" : item.q) : null;
+  const chips = item
+    ? ["Make this more concise", "What's the source here?"]
     : ["Change references to Copia to Chester Asset Management Pty Ltd", "What's the source for the FUM figure?"];
 
   return (
     <div className="dr-ai-chat">
       <div className="dr-ai-chat-head">
-        <Icon name="sparkle" size={13} /> {section ? `Editing: ${section.title}` : "Edit the whole document"}
+        <Icon name="sparkle" size={13} /> {item ? `Editing: ${itemLabel}` : "Edit the whole document"}
       </div>
       <div className="dr-ai-chat-body" ref={bodyRef}>
-        {msgs.length === 0 && <div className="chat-msg-bot">{section ? `Ask about the ${section.title} section, or resolve its items above.` : "Instruct me to edit the document, across all sections or one at a time."}</div>}
+        {msgs.length === 0 && <div className="chat-msg-bot">{item ? "Ask me to edit this answer — replace a term, make it more concise, or check its source." : "Instruct me to edit the document, across all questions or one at a time."}</div>}
         {msgs.map((m, i) => m.role === "user"
           ? <div key={i} className="chat-msg-user">{m.text}</div>
           : <div key={i} className="chat-msg-bot">{m.text}</div>)}
@@ -505,7 +599,7 @@ function AIChat({ docRef, section, onAttach }) {
       )}
       <div className="dr-ai-chat-input">
         <button className="btn btn-ghost btn-icon" title="Attach files" onClick={onAttach}><Icon name="upload" size={15} /></button>
-        <input className="chat-input" placeholder={section ? `Ask about ${section.title}…` : "Instruct the assistant…"} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") send(input); }} />
+        <input className="chat-input" placeholder={item ? "Edit this answer…" : "Instruct the assistant…"} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") send(input); }} />
         <button className="btn btn-primary btn-icon" onClick={() => send(input)}><Icon name="send" size={14} /></button>
       </div>
     </div>
