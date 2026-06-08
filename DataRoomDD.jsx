@@ -104,7 +104,7 @@ function DataRoomDD() {
       </div>
 
       {dd.phase === "extracting" && <Extraction />}
-      {dd.phase === "requirements" && <Requirements />}
+      {dd.phase === "requirements" && <RequirementsReview />}
       {dd.phase === "generating" && <GenerationAnim />}
       {onCanvas && <ReviewLayout docRef={docRef} finalised={finalised} />}
     </div>
@@ -165,62 +165,9 @@ function Extraction() {
   );
 }
 
-// ---------------------------------------------------------------
-// Phase 2 — review & modify requirements (chat-refine politely disabled)
-// ---------------------------------------------------------------
-function Requirements() {
-  const { dispatch } = useStore();
-  const [selected, setSelected] = useState(DD_SECTIONS[0].id);
-  const sec = SECTION_BY_ID[selected];
-  return (
-    <div className="dr-body-scroll">
-      <div className="dr-req-summary">
-        <div>
-          <div className="dr-req-h">Requirements extracted</div>
-          <div className="dr-req-subh">Review the items below and refine a section if needed, then process to draft the responses.</div>
-        </div>
-        <div className="dr-req-stats">
-          <div className="dr-req-stat"><span className="n">{DD_ITEM_COUNT}</span><span className="l">requirements</span></div>
-          <div className="dr-req-stat"><span className="n">{DD_SECTIONS.length}</span><span className="l">sections</span></div>
-          <div className="dr-req-stat"><span className="n">{DD_REVIEW_ITEMS.length}</span><span className="l">need input</span></div>
-        </div>
-      </div>
-      <div className="dr-req-grid">
-        <div className="dr-req-list">
-          {DD_SECTIONS.map(s => {
-            const flagged = s.items.filter(it => it.flagInfo).length;
-            return (
-              <div key={s.id} className={`dr-req-row ${selected === s.id ? "active" : ""}`} onClick={() => setSelected(s.id)}>
-                <div className="dr-req-num">{s.items.length}</div>
-                <div className="dr-req-body">
-                  <div className="dr-req-topic">{s.title}{flagged > 0 && <span className="pill attention dr-flag-pill"><Icon name="warning" size={10} /> {flagged} to review</span>}</div>
-                  <div className="dr-req-text">{s.items.map(it => it.q).join(" · ")}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="dr-req-detail">
-          <div className="t-label">{sec.title} · {sec.items.length} items</div>
-          <div className="dr-req-detail-text">{sec.intro}</div>
-          <ol className="dr-req-itemlist">{sec.items.map(it => <li key={it.id}>{it.q}{it.flagInfo && <span className="pill attention dr-flag-pill"><Icon name="warning" size={10} /> {it.flagInfo.type === "validation" ? "validate" : "input"}</span>}</li>)}</ol>
-          <div className="dr-refine">
-            <div className="dr-refine-head"><Icon name="chat" size={13} /> Refine with the chat agent</div>
-            <div className="dr-refine-msg">Adjust the scope or wording for this section. Available in the full build.</div>
-            <div className="dr-refine-input">
-              <input className="chat-input" placeholder="Refine this section…" disabled />
-              <button className="btn btn-secondary" disabled>Send</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="dr-actionbar">
-        <span className="t-muted">Each section is drafted from the knowledge base. You can edit everything afterward.</span>
-        <button className="btn btn-primary" onClick={() => dispatch({ type: "DR_SET_PHASE", phase: "generating" })}><Icon name="sparkle" size={14} /> Process</button>
-      </div>
-    </div>
-  );
-}
+// Phase 2 — review & modify requirements — now lives in
+// DataRoomRequirements.jsx (`RequirementsReview`): the full questionnaire
+// as a master panel with a contextual per-section sources panel.
 
 // ---------------------------------------------------------------
 // Phase 3 — generation animation (drafts the document section by section)
