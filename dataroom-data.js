@@ -19,6 +19,7 @@ const KB_DOCS = [
     id: "fsc_chcf", active: true, kind: "pdf",
     title: "FSC CHCF December 2025.pdf",
     desc: "FSC Investment Manager Questionnaire s.13, Chester High Conviction Fund",
+    summary: "The FSC standard Investment Manager Questionnaire (section 13), completed for the Chester High Conviction Fund. Covers investment philosophy, process, performance objectives, fees and the investment team. The primary qualitative source for answering questions about the Fund.",
     type: "FSC IMQ", asAt: "Dec 2025", added: "1 Jun 2026", source: "Copia OneDrive",
     file: "dataroom/docs/FSC CHCF December 2025.pdf", pages: 26, feeds: ["Q1", "Q2", "Q3"],
   },
@@ -26,6 +27,7 @@ const KB_DOCS = [
     id: "copia_afsl", active: true, kind: "pdf",
     title: "2 Copia AFSL.pdf",
     desc: "Australian Financial Services Licence, Copia Investment Partners Ltd",
+    summary: "Australian Financial Services Licence No. 229316, held by Copia Investment Partners Ltd, the Responsible Entity. Chester operates as a Corporate Authorised Representative under this licence, which carries no special conditions beyond those standard for its class.",
     type: "Licence", asAt: "—", added: "1 Jun 2026", source: "Copia OneDrive",
     file: "dataroom/docs/2 Copia AFSL.pdf", pages: 2, feeds: ["Q1"],
   },
@@ -33,6 +35,7 @@ const KB_DOCS = [
     id: "cyber_coc", active: true, kind: "pdf",
     title: "5. Copia Cyber COC 2025 - External Version.pdf",
     desc: "Certificate of Currency, Cybersecurity policy",
+    summary: "Certificate of currency for the Cybersecurity policy placed with Chubb Insurance Australia Ltd, with a $2m limit, expiring 14 September 2026. Evidence for the insurance section of due-diligence questionnaires.",
     type: "Certificate of Currency", asAt: "expires 14 Sep 2026", added: "1 Jun 2026", source: "Copia OneDrive",
     file: "dataroom/docs/5. Copia Cyber COC 2025 - External Version.pdf", pages: 1, feeds: ["Q4"],
   },
@@ -40,6 +43,7 @@ const KB_DOCS = [
     id: "diversa", active: true, kind: "sheet",
     title: "Diversa IM Review (completed response).xlsx",
     desc: "A previously completed questionnaire, reused as evidence",
+    summary: "A completed Diversa IM Review questionnaire, reused as evidence. Holds the firm's FUM history, ownership breakdown and full insurance schedule. Often the most recent quantitative source in the library.",
     type: "Prior DD response", asAt: "31 Mar 2026 (data to 31 Dec 2025)", added: "1 Jun 2026", source: "Copia OneDrive",
     feeds: ["Q2", "Q4", "Q5"], hero: true,
   },
@@ -47,6 +51,7 @@ const KB_DOCS = [
     id: "bios", active: true, kind: "doc",
     title: "20250306 Fund Manager bios Chester.docx",
     desc: "Investment team biographies, Tucker, Kavanagh and Howard",
+    summary: "Biographies of the three portfolio managers — Rob Tucker, Anthony Kavanagh and Luke Howard — covering experience, ownership and responsibilities. Used to answer key-staff and team questions.",
     type: "Bios", asAt: "6 Mar 2025", added: "1 Jun 2026", source: "Copia OneDrive",
     feeds: ["Q2", "reserve"],
   },
@@ -89,10 +94,12 @@ const KB_FREEFORM = [
   {
     id: "ff_reg", title: "Regulatory standing", added: "1 Jun 2026", source: "Diversa response Q2.5.4",
     body: "No ASIC enforceable undertakings, reportable breaches or non-routine regulator interactions in the past 5 years.",
+    summary: "Confirms a clean five-year regulatory record — no enforceable undertakings, reportable breaches or non-routine regulator interactions.",
   },
   {
     id: "ff_contacts", title: "DD response contacts", added: "1 Jun 2026", source: "FSC CHCF p.1",
     body: "Rob Tucker for qualitative questions; Anthony Kavanagh and Luke Howard for quantitative questions.",
+    summary: "Named points of contact for due-diligence responses, split between qualitative and quantitative questions.",
   },
 ];
 
