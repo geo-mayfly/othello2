@@ -41,7 +41,10 @@ function reqAbout(item, section) {
     const h = item.hint.replace(/\s*Drafted from.*$/i, "").trim();
     return `An open field in the ${sec} section — the manager adds context in their own words.${h ? " " + h : ""}`;
   }
-  const body = item.q.trim().replace(/\s+/g, " ").replace(/[?:,\s]+$/, "");
+  if (section.custom || /biograph/i.test(section.title)) {
+    return `A professional biography for ${item.q.trim()} — drafted as a short profile from the team biographies on file.`;
+  }
+  const body = item.q.trim().replace(/\s+/g, " ").replace(/[?:.,\s]+$/, "");
   const imp = body.match(/^(?:please\s+)?(?:provide details of|provide some detail on|provide an indication of|provide details|provide|detail|describe|articulate|outline|list|add)\s+(.+)$/i);
   if (imp) return `In the ${sec} section, the manager sets out ${lcFirst(imp[1])}.`;
   if (/^if\b/i.test(body)) return `A conditional follow-up in the ${sec} section, completed only when the preceding answer applies.`;
@@ -49,6 +52,119 @@ function reqAbout(item, section) {
     return `In the ${sec} section, the manager addresses the question “${body}?”`;
   }
   return `In the ${sec} section, the manager addresses “${body}.”`;
+}
+
+// Why each section / sub-section is asked — the DD rationale the agent is
+// given so it knows what the reviewer is actually assessing.
+const REQ_SECTION_WHY = {
+  qb_business: "Establishes the manager's stability, scale, ownership and independence — the groundwork for judging whether the firm can sustain the strategy and stay aligned with investors.",
+  qb_people: "Assesses the depth, alignment and continuity of the investment team — the key-person risk, incentives and succession behind the track record.",
+  qb_process: "Tests whether there is a repeatable, well-controlled investment process — how ideas are found, sized, challenged and risk-managed.",
+  qb_fund: "Confirms the commercial and structural terms of the vehicle — the benchmark, objectives, fees, capacity and service providers an investor is actually buying.",
+  _team: "Documents the experience, credentials and tenure of each investment professional behind the strategy.",
+  _default: "Captures information a due-diligence reviewer needs to assess the manager and the fund.",
+};
+const REQ_PROCESS_SUB_WHY = {
+  "Philosophy": "Pins down the manager's edge and style — what they believe and why it should produce returns.",
+  "Research": "Examines how the universe is narrowed and ideas validated — the rigour behind stock selection.",
+  "Portfolio Construction": "Shows how conviction translates into position sizes and a coherent portfolio.",
+  "Risk Management": "Verifies independent oversight and the controls that protect capital.",
+  "Other": "Covers the supporting tooling and policies that underpin the process.",
+};
+
+// Domain content hints — what kinds of facts to look for, keyed by the
+// wording of the question. Ordered specific → general; matches are unioned
+// and capped so the brief stays focused.
+const REQ_CONTENT_HINTS = [
+  [/inception|date the business|established|launch|track record/i,
+    ["Date the business / fund was established or launched", "Length and continuity of the track record", "Any predecessor strategy, fund or mandate"]],
+  [/ownership|shareholder|employee-owned|equity ownership|owned by/i,
+    ["Shareholding percentages by individual or entity", "Legal entity / group structure and any parent links", "Whether there are any external or institutional holders", "Any recent or planned changes to ownership"]],
+  [/legal entity|holding company|parent company|group structure|corporate structure/i,
+    ["Legal entity structure and any group / parent links", "Roles of related or outsourced service entities"]],
+  [/board|executive team|governance|director|operational duties/i,
+    ["Board / executive members and their roles", "Separation of the front office from operations / back office"]],
+  [/profitab|breakeven|working capital|profitable/i,
+    ["Whether the business is profitable on base fees alone", "Reliance on performance fees", "Working-capital runway if pre-breakeven"]],
+  [/\baum\b|funds under management|\bfum\b|net flows|capacity|calendar year/i,
+    ["AUM / FUM figures with their as-at dates and currency", "Calendar-year history and net inflows / outflows", "Capacity estimate and when it was last reviewed"]],
+  [/institutional|wholesale|retail|10% of total|client group|concentration/i,
+    ["Split of AUM by channel or unit class", "The largest client(s) and their % of total AUM", "Segregated mandate vs pooled-fund split"]],
+  [/single strategy|other source|revenue|strategies/i,
+    ["Number and type of strategies / products run", "All sources of revenue", "Materiality of any non-management-fee revenue"]],
+  [/headcount|split by function|number of staff/i,
+    ["Total headcount and how it has changed over three years", "Split between investment and non-investment functions", "Which functions are outsourced, and to whom"]],
+  [/key investment staff|bios|biograph|portfolio manager|analyst|investment team/i,
+    ["Each person's name, title and role", "Years of industry experience and tenure at the firm", "Prior firms, qualifications and designations"]],
+  [/addition|departure|joiner|leaver|turnover/i,
+    ["Joiners and leavers over the past three years", "Roles affected and the dates of each change"]],
+  [/\brem\b|remuneration|incentive|co-invest|alignment|retention/i,
+    ["Base vs variable pay structure", "How pay is linked to the fund's investment outcomes", "Equity ownership / co-investment and other retention mechanisms"]],
+  [/back-up|succession|key decision|key person/i,
+    ["Designated back-up decision-maker(s)", "Succession plan for senior investment staff", "How key-person risk is spread across the team"]],
+  [/esg/i,
+    ["Whether ESG is integrated or run by a dedicated team", "The ESG / proxy-voting policy", "How ESG risk feeds valuation and stock selection"]],
+  [/style|philosophy|classify|overarching/i,
+    ["The stated investment style / bias", "Core beliefs and the source of edge", "The market inefficiency being exploited"]],
+  [/screen|universe|idea|coverage|financial models|in house|external research|generalist|specialist|devil|macro|workflow/i,
+    ["How the investable universe is defined and screened", "How ideas are generated, validated and challenged", "Names covered / modelled, and internal vs external research"]],
+  [/benchmark aware|position siz|construct|challenged on position|number of (stocks|holdings)|sizing/i,
+    ["Number of holdings and how positions are sized", "Whether the portfolio is benchmark-aware", "Buy and sell discipline triggers"]],
+  [/downside|stress|scenario|risk control|risk committee|significant weakness|drawdown/i,
+    ["Stock- and portfolio-level downside / stress testing", "Risk limits (stock, sector, cash, leverage)", "Independent risk oversight outside the investment team"]],
+  [/proprietary|internal.*model|machine learning|ai\b|enhancement/i,
+    ["Proprietary tools / models and how they are used", "Recent process enhancements", "Any use of AI / ML in the process"]],
+  [/performance benchmark/i,
+    ["The named benchmark index"]],
+  [/return objective|outperform|return target/i,
+    ["The return target relative to benchmark", "The measurement time horizon", "Whether it is stated gross or net of fees"]],
+  [/risk objective|tracking error/i,
+    ["The stated risk objective", "Expected tracking-error range"]],
+  [/fee structure|fee rebate|hurdle|high-water|\bhwm\b|performance fee/i,
+    ["Base and performance fee terms", "The hurdle / benchmark", "High-water-mark treatment and the average performance fee", "Whether rebates are available"]],
+  [/service provider|custodian|auditor|prime broker|responsible entity/i,
+    ["Responsible Entity / trustee", "Custodian and any sub-custodian", "Fund auditor", "Prime broker, if any"]],
+  [/\betf\b/i,
+    ["Whether the fund is listed or an ETF", "Market makers / authorised participants, if applicable"]],
+  [/derivative|gearing|leverage|geared/i,
+    ["Whether derivatives or leverage are used", "Approved instruments", "Their role in implementation"]],
+];
+
+// The DD rationale for an individual question.
+function reqWhy(item, section) {
+  if (section.id === "qb_process" && item.sub && REQ_PROCESS_SUB_WHY[item.sub]) return REQ_PROCESS_SUB_WHY[item.sub];
+  if (section.custom || /biograph/i.test(section.title)) return REQ_SECTION_WHY._team;
+  return REQ_SECTION_WHY[section.id] || REQ_SECTION_WHY._default;
+}
+
+// The kinds of content to look for — domain hints unioned with the exact
+// table columns the answer needs to populate.
+function reqLookFor(item) {
+  const out = [];
+  for (const [re, hints] of REQ_CONTENT_HINTS)
+    if (re.test(item.q)) for (const h of hints) if (!out.includes(h)) out.push(h);
+  let bullets = out.slice(0, 5);
+  if (bullets.length === 0) bullets = ["The specific facts the question asks for", "Supporting figures with their as-at dates", "A source document that evidences each point"];
+  if (item.table && item.table.head) {
+    const cols = item.table.head.filter(h => h && h.trim());
+    if (cols.length) bullets.push("Values for the table columns: " + cols.join(" · "));
+  }
+  return bullets;
+}
+
+// The shape of the expected answer, so the agent knows the output format.
+function reqFormat(item) {
+  if (item.hint) return "Expected output: manager-supplied free text (open question).";
+  const parts = [];
+  if (item.table) parts.push("a populated table");
+  if (item.image) parts.push("a supporting diagram where one exists");
+  parts.push("a short, factual narrative with inline source citations");
+  return "Expected output: " + parts.join(" plus ") + ".";
+}
+
+// Specific source locations the answer should start from (sheet / page).
+function reqRefs(item) {
+  return (item.a || []).filter(t => t && t.r).map(t => t.r);
 }
 
 // ============================================================
@@ -267,9 +383,15 @@ function SourcePanel({ section, tagged, onTag, onUntag }) {
   );
 }
 
-// Right-hand panel — QUESTION mode: a plain description of what the
-// question covers, then the identical documents + tagging block.
+// Right-hand panel — QUESTION mode: a thorough research brief for the
+// agent (what the question covers, why it's asked, what content to look
+// for and where), then the identical documents + tagging block.
 function QuestionPanel({ section, item, tagged, onTag, onUntag }) {
+  const { dispatch } = useStore();
+  const refs = reqRefs(item);
+  const lookFor = reqLookFor(item);
+  const openRef = (r) => dispatch({ type: "DR_OPEN_DOC", docId: r.docId, page: r.page, sheet: r.sheet });
+
   return (
     <div className="dr-src-panel">
       <div className="dr-src-top">
@@ -277,8 +399,32 @@ function QuestionPanel({ section, item, tagged, onTag, onUntag }) {
         <div className="dr-src-title">{item.q}</div>
       </div>
       <div className="dr-src-scroll">
-        <div className="dr-src-label">About this question</div>
+        <div className="dr-src-label">What this question covers</div>
         <div className="dr-q-about">{reqAbout(item, section)}</div>
+
+        <div className="dr-src-label">Why it's asked</div>
+        <div className="dr-q-why">{reqWhy(item, section)}</div>
+
+        <div className="dr-src-label">What to look for</div>
+        <ul className="dr-q-lookfor">
+          {lookFor.map((b, i) => <li key={i}><Icon name="check" size={12} /><span>{b}</span></li>)}
+        </ul>
+        <div className="dr-q-format">{reqFormat(item)}</div>
+
+        {refs.length > 0 && (
+          <>
+            <div className="dr-src-label">Where to start</div>
+            <div className="dr-q-where">The most relevant locations already identified in the knowledge base:</div>
+            <div className="dr-q-refs">
+              {refs.map((r, i) => (
+                <button key={i} className="dr-q-ref" onClick={() => openRef(r)}>
+                  <Icon name="external" size={11} /> {r.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
         <SourceDocs section={section} tagged={tagged} onTag={onTag} onUntag={onUntag} />
       </div>
     </div>
