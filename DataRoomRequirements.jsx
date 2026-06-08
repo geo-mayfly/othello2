@@ -30,7 +30,9 @@ function reqUploadDoc(name, i) {
 // ============================================================
 function RequirementsReview() {
   const { dispatch } = useStore();
-  const [selectedId, setSelectedId] = useState(null);
+  // The sources panel is always visible — default to the first section so it
+  // is populated on load. Selecting a section just swaps which one it shows.
+  const [selectedId, setSelectedId] = useState(DD_QUESTIONNAIRE[0]?.id || null);
 
   // user-tagged docs, kept on the screen: { [sectionId]: [docId, …] }
   const [tagged, setTagged] = useState({});
@@ -45,25 +47,26 @@ function RequirementsReview() {
   return (
     <div className="dr-req-screen">
       <div className="dr-req-summary">
-        <div>
+        <div className="dr-req-headblock">
+          <div className="dr-req-eyebrow"><Icon name="check" size={11} /> Preprocess complete</div>
           <div className="dr-req-h">Requirements extracted</div>
-          <div className="dr-req-subh">The full questionnaire, ready to draft. Click any section to review the knowledge-base documents that will feed it — and tag more if needed.</div>
+          <div className="dr-req-subh">The full questionnaire, ready to draft. Select any section to review the knowledge-base documents that will feed it — and tag more if needed.</div>
         </div>
         <div className="dr-req-stats">
-          <div className="dr-req-stat"><span className="n">{DD_Q_COUNT}</span><span className="l">questions</span></div>
-          <div className="dr-req-stat"><span className="n">{DD_QUESTIONNAIRE.length}</span><span className="l">sections</span></div>
-          <div className="dr-req-stat"><span className="n">{srcDocCount}</span><span className="l">source docs</span></div>
+          <div className="dr-req-stat"><Icon name="chat" size={14} className="dr-req-stat-ic" /><span className="n">{DD_Q_COUNT}</span><span className="l">questions</span></div>
+          <div className="dr-req-stat"><Icon name="docs" size={14} className="dr-req-stat-ic" /><span className="n">{DD_QUESTIONNAIRE.length}</span><span className="l">sections</span></div>
+          <div className="dr-req-stat"><Icon name="folders" size={14} className="dr-req-stat-ic" /><span className="n">{srcDocCount}</span><span className="l">source docs</span></div>
         </div>
       </div>
 
       <div className="dr-review-layout">
-        <div className={`dr-doc-pane dr-q-pane ${selected ? "split" : ""}`}>
+        <div className="dr-doc-pane dr-q-pane split">
           <div className="dr-doc dr-q-doc">
             <div className="dr-doc-headline">
               <div className="dr-doc-h1">{DD_META.title}</div>
               <div className="dr-doc-meta">{DD_META.manager} · {DD_META.product}</div>
               <div className="dr-q-hintbar">
-                <Icon name="folders" size={13} /> Click any section to see the knowledge-base documents that feed it — and tag additional documents for that section.
+                <Icon name="folders" size={13} /> Select any section to review the knowledge-base documents that feed it — and tag additional documents for that section.
               </div>
             </div>
 
@@ -83,8 +86,7 @@ function RequirementsReview() {
           <SourcePanel section={selected}
                        tagged={tagged[selectedId] || []}
                        onTag={(id) => tag(selectedId, id)}
-                       onUntag={(id) => untag(selectedId, id)}
-                       onClose={() => setSelectedId(null)} />
+                       onUntag={(id) => untag(selectedId, id)} />
         )}
       </div>
     </div>
@@ -97,7 +99,7 @@ function ReqSection({ section, selected, onSelect, taggedCount }) {
   let lastSub = null;
   return (
     <div className={`dr-qsection ${selected ? "selected" : ""}`} id={`reqsec-${section.id}`}>
-      <div className="dr-qsection-head" onClick={() => onSelect(selected ? null : section.id)}>
+      <div className="dr-qsection-head" onClick={() => onSelect(section.id)}>
         <div style={{ minWidth: 0 }}>
           <div className="dr-qsection-title">{section.title}</div>
           <div className="dr-qsection-intro">{section.intro}</div>
@@ -140,7 +142,7 @@ function ReqItem({ item }) {
 // ---------------------------------------------------------------
 // Right-hand contextual panel — suggested + tagged source documents
 // ---------------------------------------------------------------
-function SourcePanel({ section, tagged, onTag, onUntag, onClose }) {
+function SourcePanel({ section, tagged, onTag, onUntag }) {
   const { state, dispatch, toast } = useStore();
   const kbDocs = state.dataRoom.kbDocs;
   const [adding, setAdding] = useState(false);
@@ -173,9 +175,9 @@ function SourcePanel({ section, tagged, onTag, onUntag, onClose }) {
   return (
     <div className="dr-src-panel">
       <div className="dr-src-top">
-        <button className="dr-ai-back" onClick={onClose}><Icon name="chevron-left" size={13} /> Hide sources</button>
+        <div className="dr-src-eyebrow"><Icon name="folders" size={12} /> Knowledge base · sources</div>
         <div className="dr-src-title">{section.title}</div>
-        <div className="dr-src-sub">Knowledge-base documents Othello will reference when drafting this section.</div>
+        <div className="dr-src-sub">Documents Othello will reference when drafting this section.</div>
       </div>
 
       <div className="dr-src-scroll">
