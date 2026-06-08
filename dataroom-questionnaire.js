@@ -352,29 +352,37 @@ const DD_QUESTIONNAIRE = [
           ["Client 2", "—", "—"], ["Client 3", "—", "—"], ["Client 4", "—", "—"], ["Client 5", "—", "—"] ] } },
     ],
   },
-
-  {
-    id: "qb_appendix", title: "Appendix — Biographies",
-    intro: "Chester Asset Management investment-team biographies, as supplied with the questionnaire.",
-    sources: [ SRC("bios", "Full biographies for the investment team") ],
-    items: [
-      { n: "", q: "Rob Tucker — Founder and Portfolio Manager", a: [
-        "Rob Tucker is the Founder and Portfolio Manager of Chester Asset Management, a high-conviction Australian equity manager established in 2017. He has over 20 years of investment experience, including senior portfolio-management roles at SG Hiscock and HSBC Asset Management, where he managed institutional portfolios across Australia and Asia. Under Rob's leadership, Chester has received multiple industry accolades, including Financial Newswire's 2023 Fund Manager of the Year (Australian Equities – Large Cap), Money Magazine's Best Australian Shares Fund in 2023 and 2024, and the Zenith Investment Partners Fund Awards Australian Equities Large Cap Winner in 2025." ] },
-
-      { n: "", q: "Anthony Kavanagh, CFA — Portfolio Manager", a: [
-        "Anthony brings over 15 years of investment-management experience, having held key roles at SG Hiscock and Chester Asset Management. He worked alongside Rob Tucker at SG Hiscock, where they developed a shared investment philosophy that ultimately led to the co-founding of Chester in 2017. At Chester, Anthony plays a central role in portfolio management, drawing on his deep industry expertise and longstanding commitment to delivering value for investors." ] },
-
-      { n: "", q: "Luke Howard, B.Com — Portfolio Manager", a: [
-        "Luke Howard has 18 years of investment-management experience across SG Hiscock and Perennial, with deep expertise in Australian equities. He previously worked alongside Rob Tucker at SG Hiscock, sharing a strong alignment in investment approach. Luke joined Chester Asset Management in February 2018, where he contributes to the firm's high-conviction portfolio strategy and research-driven investment process." ] },
-
-      { n: "", q: "Luke Dalgleish — Investment Analyst", a: [
-        "Luke brings 7 years of industry experience, including roles in Equity Research at JP Morgan and as an analyst at Telstra Corporation. He holds a CPA designation, has completed CFA Level I, and holds a Bachelor of Business in Banking and Finance as well as Accounting. Luke joined Chester Asset Management in March 2024, contributing to investment analysis and insights across the portfolio." ] },
-
-      { n: "", q: "Tom Beard — Investment Analyst / Dealer", a: [
-        "Tom has 4 years of investment-industry experience, having worked as an Equity Analyst at Taylor Collison and a Research Analyst at Modern Investor. He holds a Bachelor of Finance and a Bachelor of Economics. Tom joined Chester Asset Management in February 2024 and supports the team through company research and investment analysis." ] },
-    ],
-  },
 ];
+
+// ------------------------------------------------------------------
+// Staged section — the investment-team biographies. Deliberately kept
+// OUT of the auto-extracted questionnaire above: the preprocess screen
+// lets the user add it back manually via "Add a section" (pre-filled
+// with these biographies), so the demo always re-introduces the team
+// biographies as a manually-added, to-be-drafted section.
+// ------------------------------------------------------------------
+const DD_STAGED_SECTION = {
+  id: "qb_team_bios", title: "Team Biographies",
+  intro: "Investment-team biographies for Chester Asset Management, drafted from the biographies on file.",
+  custom: true,
+  sources: [ SRC("bios", "Full biographies for the investment team") ],
+  items: [
+    { q: "Rob Tucker — Founder and Portfolio Manager", a: [
+      "Rob Tucker is the Founder and Portfolio Manager of Chester Asset Management, a high-conviction Australian equity manager established in 2017. He has over 20 years of investment experience, including senior portfolio-management roles at SG Hiscock and HSBC Asset Management, where he managed institutional portfolios across Australia and Asia. Under Rob's leadership, Chester has received multiple industry accolades, including Financial Newswire's 2023 Fund Manager of the Year (Australian Equities – Large Cap), Money Magazine's Best Australian Shares Fund in 2023 and 2024, and the Zenith Investment Partners Fund Awards Australian Equities Large Cap Winner in 2025." ] },
+
+    { q: "Anthony Kavanagh, CFA — Portfolio Manager", a: [
+      "Anthony brings over 15 years of investment-management experience, having held key roles at SG Hiscock and Chester Asset Management. He worked alongside Rob Tucker at SG Hiscock, where they developed a shared investment philosophy that ultimately led to the co-founding of Chester in 2017. At Chester, Anthony plays a central role in portfolio management, drawing on his deep industry expertise and longstanding commitment to delivering value for investors." ] },
+
+    { q: "Luke Howard, B.Com — Portfolio Manager", a: [
+      "Luke Howard has 18 years of investment-management experience across SG Hiscock and Perennial, with deep expertise in Australian equities. He previously worked alongside Rob Tucker at SG Hiscock, sharing a strong alignment in investment approach. Luke joined Chester Asset Management in February 2018, where he contributes to the firm's high-conviction portfolio strategy and research-driven investment process." ] },
+
+    { q: "Luke Dalgleish — Investment Analyst", a: [
+      "Luke brings 7 years of industry experience, including roles in Equity Research at JP Morgan and as an analyst at Telstra Corporation. He holds a CPA designation, has completed CFA Level I, and holds a Bachelor of Business in Banking and Finance as well as Accounting. Luke joined Chester Asset Management in March 2024, contributing to investment analysis and insights across the portfolio." ] },
+
+    { q: "Tom Beard — Investment Analyst / Dealer", a: [
+      "Tom has 4 years of investment-industry experience, having worked as an Equity Analyst at Taylor Collison and a Research Analyst at Modern Investor. He holds a Bachelor of Finance and a Bachelor of Economics. Tom joined Chester Asset Management in February 2024 and supports the team through company research and investment analysis." ] },
+  ],
+};
 
 // Lookup + counts used by the preprocess requirements screen.
 const QSECTION_BY_ID = Object.fromEntries(DD_QUESTIONNAIRE.map(s => [s.id, s]));
@@ -383,3 +391,4 @@ const DD_Q_COUNT = DD_QUESTIONNAIRE.reduce((n, s) => n + s.items.filter(it => it
 window.DD_QUESTIONNAIRE = DD_QUESTIONNAIRE;
 window.QSECTION_BY_ID = QSECTION_BY_ID;
 window.DD_Q_COUNT = DD_Q_COUNT;
+window.DD_STAGED_SECTION = DD_STAGED_SECTION;
