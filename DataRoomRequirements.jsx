@@ -29,48 +29,13 @@ function reqUploadDoc(name, i) {
   return { id: "up_" + name.replace(/\W+/g, "_").toLowerCase() + "_" + i, kind: name.toLowerCase().endsWith(".pdf") ? "pdf" : "doc", title: name, type: "Uploaded", asAt: "—", added: "just now", source: "Uploaded · synced from DD", justSynced: true };
 }
 
-function lcFirst(s) { return s ? s.charAt(0).toLowerCase() + s.slice(1) : s; }
+// Lowercase the first letter for mid-sentence flow, but leave all-caps
+// acronyms (AUM, ESG, ETF, REM …) intact.
+function lcFirst(s) { return s && /^[A-Z][a-z]/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s; }
 
-// A plain-language description of what a question is *about* (not an LLM
-// prompt). Imperative asks are reframed to "the manager sets out …";
-// yes/no and wh- questions are contextualised within their section; open
-// fields and conditional follow-ups get their own framing.
-function reqAbout(item, section) {
-  const sec = section.title;
-  if (item.hint) {
-    const h = item.hint.replace(/\s*Drafted from.*$/i, "").trim();
-    return `An open field in the ${sec} section — the manager adds context in their own words.${h ? " " + h : ""}`;
-  }
-  if (section.custom || /biograph/i.test(section.title)) {
-    return `A professional biography for ${item.q.trim()} — drafted as a short profile from the team biographies on file.`;
-  }
-  const body = item.q.trim().replace(/\s+/g, " ").replace(/[?:.,\s]+$/, "");
-  const imp = body.match(/^(?:please\s+)?(?:provide details of|provide some detail on|provide an indication of|provide details|provide|detail|describe|articulate|outline|list|add)\s+(.+)$/i);
-  if (imp) return `In the ${sec} section, the manager sets out ${lcFirst(imp[1])}.`;
-  if (/^if\b/i.test(body)) return `A conditional follow-up in the ${sec} section, completed only when the preceding answer applies.`;
-  if (/^(is|are|was|were|am|do|does|did|has|have|had|can|could|will|would|should|what|how|when|where|which|why|who)\b/i.test(body)) {
-    return `In the ${sec} section, the manager addresses the question “${body}?”`;
-  }
-  return `In the ${sec} section, the manager addresses “${body}.”`;
-}
-
-// Why each section / sub-section is asked — the DD rationale the agent is
-// given so it knows what the reviewer is actually assessing.
-const REQ_SECTION_WHY = {
-  qb_business: "Establishes the manager's stability, scale, ownership and independence — the groundwork for judging whether the firm can sustain the strategy and stay aligned with investors.",
-  qb_people: "Assesses the depth, alignment and continuity of the investment team — the key-person risk, incentives and succession behind the track record.",
-  qb_process: "Tests whether there is a repeatable, well-controlled investment process — how ideas are found, sized, challenged and risk-managed.",
-  qb_fund: "Confirms the commercial and structural terms of the vehicle — the benchmark, objectives, fees, capacity and service providers an investor is actually buying.",
-  _team: "Documents the experience, credentials and tenure of each investment professional behind the strategy.",
-  _default: "Captures information a due-diligence reviewer needs to assess the manager and the fund.",
-};
-const REQ_PROCESS_SUB_WHY = {
-  "Philosophy": "Pins down the manager's edge and style — what they believe and why it should produce returns.",
-  "Research": "Examines how the universe is narrowed and ideas validated — the rigour behind stock selection.",
-  "Portfolio Construction": "Shows how conviction translates into position sizes and a coherent portfolio.",
-  "Risk Management": "Verifies independent oversight and the controls that protect capital.",
-  "Other": "Covers the supporting tooling and policies that underpin the process.",
-};
+// Matches the imperative "Please detail / provide / describe … X" asks so
+// the X can be lifted into a natural instruction.
+const REQ_IMP = /^(?:please\s+)?(?:provide details of|provide some detail on|provide an indication of|provide details|provide|detail|describe|articulate|outline|list|add)\s+(.+)$/i;
 
 // Domain content hints — what kinds of facts to look for, keyed by the
 // wording of the question. Ordered specific → general; matches are unioned
@@ -130,13 +95,6 @@ const REQ_CONTENT_HINTS = [
     ["Whether derivatives or leverage are used", "Approved instruments", "Their role in implementation"]],
 ];
 
-// The DD rationale for an individual question.
-function reqWhy(item, section) {
-  if (section.id === "qb_process" && item.sub && REQ_PROCESS_SUB_WHY[item.sub]) return REQ_PROCESS_SUB_WHY[item.sub];
-  if (section.custom || /biograph/i.test(section.title)) return REQ_SECTION_WHY._team;
-  return REQ_SECTION_WHY[section.id] || REQ_SECTION_WHY._default;
-}
-
 // The kinds of content to look for — domain hints unioned with the exact
 // table columns the answer needs to populate.
 function reqLookFor(item) {
@@ -152,19 +110,36 @@ function reqLookFor(item) {
   return bullets;
 }
 
-// The shape of the expected answer, so the agent knows the output format.
-function reqFormat(item) {
-  if (item.hint) return "Expected output: manager-supplied free text (open question).";
-  const parts = [];
-  if (item.table) parts.push("a populated table");
-  if (item.image) parts.push("a supporting diagram where one exists");
-  parts.push("a short, factual narrative with inline source citations");
-  return "Expected output: " + parts.join(" plus ") + ".";
-}
+function joinList(a) { a = a.filter(Boolean); return a.length <= 1 ? (a[0] || "") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]; }
 
-// Specific source locations the answer should start from (sheet / page).
-function reqRefs(item) {
-  return (item.a || []).filter(t => t && t.r).map(t => t.r);
+// One editable, plain-language instruction for the agent: what to produce,
+// the content to look for, and which documents to draw on. Composed from the
+// question and the content hints; the user can edit it freely in the panel.
+function reqInstruction(item, section) {
+  const sec = section.title;
+  if (item.hint) {
+    return `Open field — invite the manager to add any context they wish, in their own words, drawing on the ${sec} documents below where useful.`;
+  }
+  const body = item.q.trim().replace(/\s+/g, " ").replace(/[?:.,\s]+$/, "");
+  let lead;
+  if (section.custom || /biograph/i.test(section.title)) {
+    lead = `Draft a short professional biography for ${body}.`;
+  } else if (/^if\b/i.test(body)) {
+    const after = body.replace(/^if[^,]*,\s*/i, "");
+    const im2 = after.match(REQ_IMP);
+    lead = im2 ? `Where the preceding answer applies, set out ${lcFirst(im2[1])}.` : `Where the preceding answer applies, ${lcFirst(after.replace(/^please\s+/i, ""))}.`;
+  } else {
+    const im = body.match(REQ_IMP);
+    lead = im ? `Set out ${lcFirst(im[1])}.` : `Answer the question: ${body}?`;
+  }
+  const all = reqLookFor(item);
+  const cols = all.find(b => b.startsWith("Values for the table columns"));
+  const hints = all.filter(b => !b.startsWith("Values for the table columns"));
+  let s = lead;
+  if (hints.length) s += ` Look for ${joinList(hints.map(lcFirst))}.`;
+  if (cols) s += ` Populate the table: ${cols.replace(/^Values for the table columns:\s*/, "")}.`;
+  s += ` Draw on the ${sec} documents listed below and keep the response factual and concise.`;
+  return s;
 }
 
 // ============================================================
@@ -245,7 +220,7 @@ function RequirementsReview() {
         </div>
 
         {selItem ? (
-          <QuestionPanel section={selSection} item={selItem}
+          <QuestionPanel key={`${sel.secId}:${sel.qIdx}`} section={selSection} item={selItem}
                          tagged={tagged[sel.secId] || []}
                          onTag={(id) => tag(sel.secId, id)}
                          onUntag={(id) => untag(sel.secId, id)} />
@@ -383,15 +358,19 @@ function SourcePanel({ section, tagged, onTag, onUntag }) {
   );
 }
 
-// Right-hand panel — QUESTION mode: a thorough research brief for the
-// agent (what the question covers, why it's asked, what content to look
-// for and where), then the identical documents + tagging block.
-function QuestionPanel({ section, item, tagged, onTag, onUntag }) {
-  const { dispatch } = useStore();
-  const refs = reqRefs(item);
-  const lookFor = reqLookFor(item);
-  const openRef = (r) => dispatch({ type: "DR_OPEN_DOC", docId: r.docId, page: r.page, sheet: r.sheet });
+// A single, editable instruction textarea that auto-grows to its content.
+function EditableInstruction({ value }) {
+  const [text, setText] = useState(value);
+  const grow = (el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } };
+  return (
+    <textarea className="dr-q-instruction" value={text} ref={grow} spellCheck={false}
+              onChange={(e) => { setText(e.target.value); grow(e.target); }} />
+  );
+}
 
+// Right-hand panel — QUESTION mode: one editable instruction for the agent,
+// then the identical documents + tagging block.
+function QuestionPanel({ section, item, tagged, onTag, onUntag }) {
   return (
     <div className="dr-src-panel">
       <div className="dr-src-top">
@@ -399,32 +378,8 @@ function QuestionPanel({ section, item, tagged, onTag, onUntag }) {
         <div className="dr-src-title">{item.q}</div>
       </div>
       <div className="dr-src-scroll">
-        <div className="dr-src-label">What this question covers</div>
-        <div className="dr-q-about">{reqAbout(item, section)}</div>
-
-        <div className="dr-src-label">Why it's asked</div>
-        <div className="dr-q-why">{reqWhy(item, section)}</div>
-
-        <div className="dr-src-label">What to look for</div>
-        <ul className="dr-q-lookfor">
-          {lookFor.map((b, i) => <li key={i}><Icon name="check" size={12} /><span>{b}</span></li>)}
-        </ul>
-        <div className="dr-q-format">{reqFormat(item)}</div>
-
-        {refs.length > 0 && (
-          <>
-            <div className="dr-src-label">Where to start</div>
-            <div className="dr-q-where">The most relevant locations already identified in the knowledge base:</div>
-            <div className="dr-q-refs">
-              {refs.map((r, i) => (
-                <button key={i} className="dr-q-ref" onClick={() => openRef(r)}>
-                  <Icon name="external" size={11} /> {r.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
+        <div className="dr-src-label">Instruction <span className="t-muted">· editable</span></div>
+        <EditableInstruction value={reqInstruction(item, section)} />
         <SourceDocs section={section} tagged={tagged} onTag={onTag} onUntag={onUntag} />
       </div>
     </div>
