@@ -29,21 +29,26 @@ function reqUploadDoc(name, i) {
   return { id: "up_" + name.replace(/\W+/g, "_").toLowerCase() + "_" + i, kind: name.toLowerCase().endsWith(".pdf") ? "pdf" : "doc", title: name, type: "Uploaded", asAt: "—", added: "just now", source: "Uploaded · synced from DD", justSynced: true };
 }
 
-// Inline reference tokens carried on an answer (specific sheets / pages a
-// question's response cites). Used to make the question panel specific.
-function reqRefs(item) {
-  return (item.a || []).filter(t => t && t.r).map(t => t.r);
-}
+function lcFirst(s) { return s ? s.charAt(0).toLowerCase() + s.slice(1) : s; }
 
-// The generation prompt for a single question — synthesised from the
-// question, its section and any on-file context so it reads like the
-// instruction Othello would run to draft the answer.
-function reqPrompt(item, section) {
-  const guide = item.hint
-    ? item.hint.replace(/\s+Drafted from.*$/, "").trim()
-    : `Draft a concise, factual response, written in ${DD_META.manager}'s voice.`;
-  const ctx = item.note ? ` Reconcile it with what is already on file: ${item.note}` : "";
-  return `Answer "${item.q}" for ${DD_META.manager} (${DD_META.product}). ${guide} Pull the figures and wording from the ${section.title} knowledge base on the right, cite each source inline, and flag anything that cannot be verified against a document.${ctx}`;
+// A plain-language description of what a question is *about* (not an LLM
+// prompt). Imperative asks are reframed to "the manager sets out …";
+// yes/no and wh- questions are contextualised within their section; open
+// fields and conditional follow-ups get their own framing.
+function reqAbout(item, section) {
+  const sec = section.title;
+  if (item.hint) {
+    const h = item.hint.replace(/\s*Drafted from.*$/i, "").trim();
+    return `An open field in the ${sec} section — the manager adds context in their own words.${h ? " " + h : ""}`;
+  }
+  const body = item.q.trim().replace(/\s+/g, " ").replace(/[?:,\s]+$/, "");
+  const imp = body.match(/^(?:please\s+)?(?:provide details of|provide some detail on|provide an indication of|provide details|provide|detail|describe|articulate|outline|list|add)\s+(.+)$/i);
+  if (imp) return `In the ${sec} section, the manager sets out ${lcFirst(imp[1])}.`;
+  if (/^if\b/i.test(body)) return `A conditional follow-up in the ${sec} section, completed only when the preceding answer applies.`;
+  if (/^(is|are|was|were|am|do|does|did|has|have|had|can|could|will|would|should|what|how|when|where|which|why|who)\b/i.test(body)) {
+    return `In the ${sec} section, the manager addresses the question “${body}?”`;
+  }
+  return `In the ${sec} section, the manager addresses “${body}.”`;
 }
 
 // ============================================================
@@ -83,7 +88,7 @@ function RequirementsReview() {
         <div className="dr-req-headblock">
           <div className="dr-req-eyebrow"><Icon name="check" size={11} /> Preprocess complete</div>
           <div className="dr-req-h">Requirements extracted</div>
-          <div className="dr-req-subh">The full questionnaire, ready to draft. Select a section to review the documents that will feed it, or a single question to see the prompt and information behind its answer.</div>
+          <div className="dr-req-subh">The full questionnaire, ready to draft. Select a section to review the documents that will feed it, or a single question to see what it covers and the documents behind it.</div>
         </div>
         <div className="dr-req-stats">
           <div className="dr-req-stat"><Icon name="chat" size={14} className="dr-req-stat-ic" /><span className="n">{qCount}</span><span className="l">questions</span></div>
@@ -99,7 +104,7 @@ function RequirementsReview() {
               <div className="dr-doc-h1">{DD_META.title}</div>
               <div className="dr-doc-meta">{DD_META.manager} · {DD_META.product}</div>
               <div className="dr-q-hintbar">
-                <Icon name="folders" size={13} /> Select a section to review its source documents, or a question to inspect the prompt and information used to answer it.
+                <Icon name="folders" size={13} /> Select a section to review its source documents, or a question to see what it covers and the documents used to answer it.
               </div>
             </div>
 
@@ -125,7 +130,9 @@ function RequirementsReview() {
 
         {selItem ? (
           <QuestionPanel section={selSection} item={selItem}
-                         tagged={tagged[sel.secId] || []} />
+                         tagged={tagged[sel.secId] || []}
+                         onTag={(id) => tag(sel.secId, id)}
+                         onUntag={(id) => untag(sel.secId, id)} />
         ) : selSection ? (
           <SourcePanel section={selSection}
                        tagged={tagged[sel.secId] || []}
@@ -185,9 +192,11 @@ function ReqItem({ item, selected, onSelect }) {
 }
 
 // ---------------------------------------------------------------
-// Right-hand panel — SECTION mode: suggested + tagged source documents
+// Shared documents + tagging block — rendered identically whether a
+// SECTION or an individual QUESTION is selected. Tagging is always keyed
+// to the section the docs belong to.
 // ---------------------------------------------------------------
-function SourcePanel({ section, tagged, onTag, onUntag }) {
+function SourceDocs({ section, tagged, onTag, onUntag }) {
   const { state, dispatch, toast } = useStore();
   const kbDocs = state.dataRoom.kbDocs;
   const [adding, setAdding] = useState(false);
@@ -218,99 +227,59 @@ function SourcePanel({ section, tagged, onTag, onUntag }) {
   };
 
   return (
+    <>
+      <div className="dr-src-label">Suggested documents <span className="t-muted">· {suggested.length}</span></div>
+      <div className="dr-src-list">
+        {suggested.map(s => <SrcCard key={s.id} doc={s.doc} feeds={s.feeds} onOpen={() => openDoc(s.doc)} />)}
+        {suggested.length === 0 && <div className="dr-ai-empty">No documents matched yet — tag one below.</div>}
+      </div>
+
+      {taggedDocs.length > 0 && (
+        <>
+          <div className="dr-src-label">Tagged for this section <span className="t-muted">· {taggedDocs.length}</span></div>
+          <div className="dr-src-list">
+            {taggedDocs.map(d => <SrcCard key={d.id} doc={d} tagged onOpen={() => openDoc(d)} onRemove={() => onUntag(d.id)} />)}
+          </div>
+        </>
+      )}
+
+      <button className="btn btn-secondary dr-src-addbtn" onClick={() => setAdding(a => !a)}>
+        <Icon name="plus" size={13} /> Tag additional documents
+      </button>
+      {adding && <TagDocsPicker presentIds={presentIds} onTag={onTag} onUpload={onUpload} />}
+    </>
+  );
+}
+
+// Right-hand panel — SECTION mode.
+function SourcePanel({ section, tagged, onTag, onUntag }) {
+  return (
     <div className="dr-src-panel">
       <div className="dr-src-top">
         <div className="dr-src-eyebrow"><Icon name="folders" size={12} /> Knowledge base · sources</div>
         <div className="dr-src-title">{section.title}</div>
         <div className="dr-src-sub">Documents Othello will reference when drafting this section.</div>
       </div>
-
       <div className="dr-src-scroll">
-        <div className="dr-src-label">Suggested documents <span className="t-muted">· {suggested.length}</span></div>
-        <div className="dr-src-list">
-          {suggested.map(s => <SrcCard key={s.id} doc={s.doc} feeds={s.feeds} onOpen={() => openDoc(s.doc)} />)}
-          {suggested.length === 0 && <div className="dr-ai-empty">No documents matched yet — tag one below.</div>}
-        </div>
-
-        {taggedDocs.length > 0 && (
-          <>
-            <div className="dr-src-label">Tagged for this section <span className="t-muted">· {taggedDocs.length}</span></div>
-            <div className="dr-src-list">
-              {taggedDocs.map(d => <SrcCard key={d.id} doc={d} tagged onOpen={() => openDoc(d)} onRemove={() => onUntag(d.id)} />)}
-            </div>
-          </>
-        )}
-
-        <button className="btn btn-secondary dr-src-addbtn" onClick={() => setAdding(a => !a)}>
-          <Icon name="plus" size={13} /> Tag additional documents
-        </button>
-        {adding && <TagDocsPicker presentIds={presentIds} onTag={onTag} onUpload={onUpload} />}
+        <SourceDocs section={section} tagged={tagged} onTag={onTag} onUntag={onUntag} />
       </div>
     </div>
   );
 }
 
-// ---------------------------------------------------------------
-// Right-hand panel — QUESTION mode: the prompt + information behind the
-// answer Othello will draft for a single question.
-// ---------------------------------------------------------------
-function QuestionPanel({ section, item, tagged }) {
-  const { state, dispatch } = useStore();
-  const kbDocs = state.dataRoom.kbDocs;
-
-  const suggested = section.sources
-    .map(s => ({ ...s, doc: reqResolveKbDoc(kbDocs, s.id) }))
-    .filter(s => s.doc);
-  const taggedDocs = tagged.map(id => reqResolveKbDoc(kbDocs, id)).filter(Boolean);
-  const refs = reqRefs(item);
-
-  const openDoc = (d) => dispatch({
-    type: "DR_OPEN_DOC", docId: d.id,
-    page: d.kind === "pdf" ? 1 : undefined,
-    sheet: d.kind === "sheet" ? Object.keys(SHEET_SNIPPETS)[0] : undefined,
-  });
-  const openRef = (r) => dispatch({ type: "DR_OPEN_DOC", docId: r.docId, page: r.page, sheet: r.sheet });
-
+// Right-hand panel — QUESTION mode: a plain description of what the
+// question covers, then the identical documents + tagging block.
+function QuestionPanel({ section, item, tagged, onTag, onUntag }) {
   return (
     <div className="dr-src-panel">
       <div className="dr-src-top">
-        <div className="dr-src-eyebrow"><Icon name="sparkle" size={12} /> {item.n ? `Question ${item.n}` : "Entry"} · {section.title}</div>
+        <div className="dr-src-eyebrow"><Icon name="chat" size={12} /> {item.n ? `Question ${item.n}` : "Entry"} · {section.title}</div>
         <div className="dr-src-title">{item.q}</div>
       </div>
-
       <div className="dr-src-scroll">
-        <div className="dr-src-label">Generation prompt</div>
-        <div className="dr-q-prompt">
-          <Icon name="sparkle" size={13} className="dr-q-prompt-ic" />
-          <span>{reqPrompt(item, section)}</span>
-        </div>
-
-        {refs.length > 0 && (
-          <>
-            <div className="dr-src-label">Cited in the draft</div>
-            <div className="dr-q-refs">
-              {refs.map((r, i) => (
-                <button key={i} className="dr-q-ref" onClick={() => openRef(r)}>
-                  <Icon name="external" size={11} /> {r.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        <div className="dr-src-label">Information used to answer <span className="t-muted">· what each document provides</span></div>
-        <div className="dr-src-list">
-          {suggested.map(s => <SrcCard key={s.id} doc={s.doc} feeds={s.feeds} onOpen={() => openDoc(s.doc)} />)}
-          {taggedDocs.map(d => <SrcCard key={d.id} doc={d} feeds="Tagged to this section" onOpen={() => openDoc(d)} />)}
-          {suggested.length === 0 && taggedDocs.length === 0 && <div className="dr-ai-empty">No documents tagged to this section yet.</div>}
-        </div>
-
-        {(item.note || item.hint) && (
-          <>
-            <div className="dr-src-label">On file</div>
-            <div className="dr-q-context">{item.note || "Open question — the manager supplies this context; Othello drafts a prompt for them from the section sources."}</div>
-          </>
-        )}
+        <div className="dr-src-label">About this question</div>
+        <div className="dr-q-about">{reqAbout(item, section)}</div>
+        <SourceDocs section={section} tagged={tagged} onTag={onTag} onUntag={onUntag} />
       </div>
     </div>
   );
