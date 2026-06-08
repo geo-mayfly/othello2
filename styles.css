@@ -2175,6 +2175,12 @@ button.dr-chip:hover { background: var(--bg-elevated-2); color: var(--text-prima
 .dr-q-item.bio .dr-q-text { font-size: 14px; }
 .dr-q-note { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; line-height: 1.45; }
 
+/* add-a-question inside an existing section */
+.dr-addq-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 7px 11px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: transparent; border: 1px dashed var(--border-default); border-radius: 7px; transition: background 120ms, border-color 120ms, color 120ms; }
+.dr-addq-btn:hover { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.dr-addq { display: flex; align-items: center; gap: 8px; margin-top: 12px; animation: cardLand 240ms ease; }
+.dr-addq .dr-addsection-input { flex: 1; min-width: 0; }
+
 .dr-q-actionbar { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding: 14px 16px; border: 1px solid var(--border-default); border-radius: var(--r-card); background: var(--bg-surface); box-shadow: 0 -6px 20px rgba(0,0,0,0.35); }
 .dr-q-actionbar .t-muted { font-size: 12px; }
 

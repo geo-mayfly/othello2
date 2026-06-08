@@ -355,11 +355,10 @@ const DD_QUESTIONNAIRE = [
 ];
 
 // ------------------------------------------------------------------
-// Staged section — the investment-team biographies. Deliberately kept
-// OUT of the auto-extracted questionnaire above: the preprocess screen
-// lets the user add it back manually via "Add a section" (pre-filled
-// with these biographies), so the demo always re-introduces the team
-// biographies as a manually-added, to-be-drafted section.
+// Reference section — the investment-team biographies, deliberately kept
+// OUT of the auto-extracted questionnaire above. "Add a section" now starts
+// blank (the user names the section and types its own questions), so this is
+// retained as reference demo content rather than pre-filling the composer.
 // ------------------------------------------------------------------
 const DD_STAGED_SECTION = {
   id: "qb_team_bios", title: "Team Biographies",

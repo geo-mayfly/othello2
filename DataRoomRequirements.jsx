@@ -11,9 +11,10 @@
 //     metadata: the generation prompt and the information Othello can
 //     draw on to draft the answer.
 //
-// The user can also add a section manually ("Add a section"), pre-staged
-// with the team biographies. Questions only — the responses themselves are
-// drafted later by "Process". All selection / tagging / added sections are
+// The user can also add a section manually ("Add a section"), which starts
+// blank, and append individual questions to any existing section ("Add a
+// question"). Questions only — the responses themselves are drafted later by
+// "Process". All selection / tagging / added sections / added questions are
 // kept in local React state so the screen never touches the answer page.
 
 // Resolve a knowledge-base doc id against the live KB (falls back to the
@@ -173,6 +174,22 @@ function RequirementsReview() {
     setAdding(false);
   };
 
+  // Append a question to an existing section — numbered after the section's
+  // current highest numeric question — and select it so its instruction shows.
+  const addQuestion = (secId, text) => {
+    const q = text.trim();
+    if (!q) return;
+    const sec = sections.find(s => s.id === secId);
+    const newIdx = sec ? sec.items.length : 0;
+    setSections(prev => prev.map(s => {
+      if (s.id !== secId) return s;
+      const nums = s.items.map(it => parseInt(it.n, 10)).filter(n => !Number.isNaN(n));
+      const n = String((nums.length ? Math.max(...nums) : s.items.length) + 1);
+      return { ...s, items: [...s.items, { n, q, custom: true }] };
+    }));
+    setSel({ secId, qIdx: newIdx });
+  };
+
   return (
     <div className="dr-req-screen">
       <div className="dr-req-summary">
@@ -205,6 +222,7 @@ function RequirementsReview() {
                           selectedQIdx={sel.secId === s.id ? sel.qIdx : null}
                           onSelectSection={() => setSel({ secId: s.id, qIdx: null })}
                           onSelectQuestion={(idx) => setSel({ secId: s.id, qIdx: idx })}
+                          onAddQuestion={(text) => addQuestion(s.id, text)}
                           taggedCount={(tagged[s.id] || []).length} />
             ))}
 
@@ -236,7 +254,7 @@ function RequirementsReview() {
 }
 
 // A single questionnaire section in the master panel.
-function ReqSection({ section, sectionSelected, selectedQIdx, onSelectSection, onSelectQuestion, taggedCount }) {
+function ReqSection({ section, sectionSelected, selectedQIdx, onSelectSection, onSelectQuestion, onAddQuestion, taggedCount }) {
   const srcCount = section.sources.length + taggedCount;
   let lastSub = null;
   const active = sectionSelected || selectedQIdx != null;
@@ -262,7 +280,45 @@ function ReqSection({ section, sectionSelected, selectedQIdx, onSelectSection, o
             </React.Fragment>
           );
         })}
+        {onAddQuestion && <AddQuestionInline onAdd={onAddQuestion} />}
       </div>
+    </div>
+  );
+}
+
+// Inline composer to append a question to an existing section. Collapsed to a
+// quiet affordance until opened; appends on Enter or "Add" and stays open so
+// several questions can be added in a row. Escape / "Done" closes it.
+function AddQuestionInline({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const inputRef = useRef(null);
+  useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
+
+  const submit = () => {
+    const q = text.trim();
+    if (!q) return;
+    onAdd(q);
+    setText("");
+    inputRef.current?.focus();
+  };
+  const close = () => { setText(""); setOpen(false); };
+
+  if (!open) {
+    return (
+      <button className="dr-addq-btn" onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
+        <Icon name="plus" size={12} /> Add a question
+      </button>
+    );
+  }
+  return (
+    <div className="dr-addq" onClick={(e) => e.stopPropagation()}>
+      <input ref={inputRef} className="dr-addsection-input" value={text}
+             placeholder="Add a question or entry…"
+             onChange={(e) => setText(e.target.value)}
+             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } else if (e.key === "Escape") close(); }} />
+      <button className="btn btn-primary" onClick={submit} disabled={!text.trim()}><Icon name="check" size={12} /> Add</button>
+      <button className="btn btn-secondary" onClick={close}>Done</button>
     </div>
   );
 }
@@ -441,32 +497,30 @@ function TagDocsPicker({ presentIds, onTag, onUpload }) {
 }
 
 // ---------------------------------------------------------------
-// Add-a-section composer — pre-staged with the team biographies so the
-// demo always re-introduces them as a manually-added section.
+// Add-a-section composer — starts blank. The user names the section and
+// types its questions; "Process" drafts the responses from the knowledge
+// base, the same as the extracted sections.
 // ---------------------------------------------------------------
 function AddSectionComposer({ onAdd, onCancel }) {
-  const staged = typeof DD_STAGED_SECTION !== "undefined" ? DD_STAGED_SECTION : { title: "", intro: "", sources: [], items: [] };
-  const [title, setTitle] = useState(staged.title);
-  const [rows, setRows] = useState(staged.items.map(it => it.q));
+  const [title, setTitle] = useState("");
+  const [rows, setRows] = useState([""]);
 
   const setRow = (i, v) => setRows(r => r.map((x, j) => (j === i ? v : x)));
   const addRow = () => setRows(r => [...r, ""]);
-  const removeRow = (i) => setRows(r => r.filter((_, j) => j !== i));
+  const removeRow = (i) => setRows(r => (r.length > 1 ? r.filter((_, j) => j !== i) : [""]));
+
+  const cleaned = rows.map(r => r.trim()).filter(Boolean);
+  const canAdd = Boolean(title.trim() || cleaned.length);
 
   const submit = () => {
-    const cleaned = rows.map(r => r.trim()).filter(Boolean);
-    const stagedItems = staged.items;
-    const items = (cleaned.length ? cleaned : stagedItems.map(it => it.q)).map((q, i) => ({
-      n: String(i + 1), q, custom: true,
-      // carry the staged biography where the row still matches it, so the
-      // added section is coherent and "Process" can draft the bios.
-      a: stagedItems[i] && stagedItems[i].q === q ? stagedItems[i].a : undefined,
-    }));
+    if (!canAdd) return;
+    const items = cleaned.map((q, i) => ({ n: String(i + 1), q, custom: true }));
     onAdd({
-      ...staged,
       id: "qb_custom_" + Date.now(),
-      title: title.trim() || staged.title,
+      title: title.trim() || "Untitled section",
+      intro: "Added manually — drafted from the knowledge base, the same as the extracted sections.",
       custom: true,
+      sources: [],
       items,
     });
   };
@@ -498,7 +552,7 @@ function AddSectionComposer({ onAdd, onCancel }) {
 
       <div className="dr-addsection-actions">
         <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-        <button className="btn btn-primary" onClick={submit}><Icon name="check" size={13} /> Add section</button>
+        <button className="btn btn-primary" onClick={submit} disabled={!canAdd}><Icon name="check" size={13} /> Add section</button>
       </div>
     </div>
   );
