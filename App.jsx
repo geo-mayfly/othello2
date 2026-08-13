@@ -71,4 +71,8 @@ function ToastStack() {
 window.App = App;
 
 // boot
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <PasswordGate>
+    <App />
+  </PasswordGate>
+);
