@@ -297,6 +297,19 @@ function DemoPanel() {
       </div>
 
       <div className="demo-body">
+        <div className="demo-section demo-videos">
+          <div className="demo-section-label">Video walkthroughs</div>
+          <a className="demo-video-link" href="https://www.loom.com/share/14523797513740c8b421e554a49ed815" target="_blank" rel="noopener noreferrer">
+            <Icon name="play" size={12} />
+            <span>Othello Diligence Vault</span>
+            <Icon name="external" size={12} className="demo-video-ext" />
+          </a>
+          <a className="demo-video-link" href="https://www.loom.com/share/cdd684c647fa490a9bf495970e082552" target="_blank" rel="noopener noreferrer">
+            <Icon name="play" size={12} />
+            <span>Othello Vault</span>
+            <Icon name="external" size={12} className="demo-video-ext" />
+          </a>
+        </div>
         {FLOWS.map(flow => {
           const isCollapsed = !!collapsed[flow.id];
           const completedCount = flow.steps.filter(s => s.done(state)).length;
